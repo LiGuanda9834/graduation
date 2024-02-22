@@ -1,0 +1,42 @@
+%---------------------------------------------------------------------------%
+%->> Frontmatter
+%---------------------------------------------------------------------------%
+%-
+%-> 生成封面
+%-
+\maketitle% 生成中文封面
+\MAKETITLE% 生成英文封面
+%-
+%-> 作者声明
+%-
+\makedeclaration% 生成声明页
+%-
+%-> 中文摘要
+%-
+\intobmk\chapter*{摘\quad 要}% 显示在书签但不显示在目录
+\setcounter{page}{1}% 开始页码
+\pagenumbering{Roman}% 页码符号
+
+自1958年被Manne提出开始，武器目标分配问题就成为了运筹优化领域的一个经典问题，它的基本形式是将m个武器分配给n个敌方目标，来最大化对于敌方目标的销毁期望，随着时代的发展，战场环境也变得愈发复杂，实际的作战场景中往往需要雷达在内的侦察资源来指导武器对目标进行打击，因此在对问题进行数学建模时，仅仅考虑武器与目标两个作战要素会导致模型与现实相脱节。因此本文考虑的情景中，首先对于一个更复杂的作战场景进行了数学建模，将武器目标分配问题拓展为武器-雷达-目标分配问题。
+
+在过去的研究中，武器目标分配问题已经被证明为NP-完全问题，并且一般采用非线性方式对问题进行建模，已有的求解思路包括包括启发式算法，近似算法和精确算法。在精确算法中，目前两种最有效的方式是对问题进行线性化与利用问题的凸性对问题采用外逼近方法来进行求解，在本文中，将对这两种求解思路进行整合与拓展。针对非线性形式的武器目标分配问题，通过将所有作战场景列出来的方式，实现对问题的线性化，将问题转化为一个具有指数多个列的线性整数规划问题，再对这个问题采用基于列生成的分支定界算法，并且将列生成子问题转化为一个凸整数规划题，并使用外逼近方法进行求解，并提出了一系列有效不等式，最终得到整体的求解方式。
+
+在实际的作战场景中，作战过程往往并非是一个静态的过程，无论是敌方的来袭目标还是我方的作战策略通常都会随着时间发生变化。为了能够对这个过程进行数学建模，我们采用了非均匀时间离散的方式，将整个作战过程拆分为多个决策节点，以兼顾对于近期决策点的精确抉择与远期决策点的估计。同时在这个数学模型的基础上，同样采用列生成求解框架，对于列生成子问题进行了进一步的转化，将问题转化为了一个更紧的形式，以实现问题的快速求解。
+
+
+
+
+
+\keywords{武器目标分配，列生成，外逼近，动态武器目标分配}% 中文关键词
+%-
+%-> 英文摘要
+%-
+\intobmk\chapter*{Abstract}% 显示在书签但不显示在目录
+Since its introduction by Manne in 1958, the weapon-target assignment (WTA) problem has become a classic issue in the field of operations research and optimization. Its fundamental form involves allocating m weapons to n enemy targets to maximize the expected destruction of the enemy targets. As time has evolved, the battlefield environment has become increasingly complex, and actual combat scenarios often require reconnaissance resources, including radar, to guide weapons in striking targets. Therefore, merely considering the two combat elements of weapons and targets in mathematical modeling can lead to a disconnect between the model and reality. In this context, this paper first mathematically models a more complex combat scenario, extending the WTA problem to a weapon-radar-target assignment problem.
+
+In past research, the WTA problem has been proven to be NP-complete, and it is generally modeled in a nonlinear manner. Existing solution approaches include heuristic algorithms, approximation algorithms, and exact algorithms. Among exact algorithms, the two most effective methods currently are linearizing the problem and using the convexity of the problem to solve it with an outer approximation method. This paper integrates and expands upon these two solution approaches. For the nonlinear form of the WTA problem, the problem is linearized by listing all combat scenarios, transforming it into a linear integer programming problem with exponentially many columns. This problem is then solved using a branch-and-bound algorithm based on column generation, and the column generation subproblem is transformed into a convex integer programming problem and solved using the outer approximation method. A series of effective inequalities are proposed, resulting in an overall solution approach.
+
+In actual combat scenarios, the combat process is often not static, as both the enemy's incoming targets and our combat strategy typically change over time. To mathematically model this process, we adopt a non-uniform time discretization approach, dividing the entire combat process into multiple decision nodes to balance precise choices for near-term decision points with estimates for long-term decision points. Based on this mathematical model, the column generation solution framework is also used, and the column generation subproblem is further transformed, converting the problem into a tighter form to achieve rapid solution of the problem.
+
+\KEYWORDS{Weapon-Target-Assignment, Column Generation, Outer Approximation, Dynamic-Weapon-Target-Assignment}% 英文关键词
+%---------------------------------------------------------------------------%

@@ -1,0 +1,45 @@
+\contentsline {chapter}{\numberline {第1章\hspace {.3em}}引言}{1}{chapter.1}%
+\contentsline {section}{\numberline {1.1}武器目标分配问题}{1}{section.1.1}%
+\contentsline {subsection}{\numberline {1.1.1}静态武器目标分配问题}{1}{subsection.1.1.1}%
+\contentsline {subsection}{\numberline {1.1.2}动态武器目标分配问题与多作战元素的武器目标分配问题}{2}{subsection.1.1.2}%
+\contentsline {section}{\numberline {1.2}预备知识}{4}{section.1.2}%
+\contentsline {subsection}{\numberline {1.2.1}整数规划问题与分支定界求解框架}{4}{subsection.1.2.1}%
+\contentsline {subsection}{\numberline {1.2.2}列生成方法}{5}{subsection.1.2.2}%
+\contentsline {subsection}{\numberline {1.2.3}外逼近方法}{7}{subsection.1.2.3}%
+\contentsline {section}{\numberline {1.3}本文主要工作}{9}{section.1.3}%
+\contentsline {chapter}{\numberline {第2章\hspace {.3em}}武器目标分配问题及基本求解方法}{11}{chapter.2}%
+\contentsline {section}{\numberline {2.1}引言}{11}{section.2.1}%
+\contentsline {section}{\numberline {2.2}武器目标分配问题的数学建模}{12}{section.2.2}%
+\contentsline {subsection}{\numberline {2.2.1}经典模型的凸性证明}{12}{subsection.2.2.1}%
+\contentsline {subsection}{\numberline {2.2.2}武器目标分配问题的数学模型构建}{13}{subsection.2.2.2}%
+\contentsline {subsection}{\numberline {2.2.3}静态武器目标分配问题的线性化方法}{14}{subsection.2.2.3}%
+\contentsline {subsection}{\numberline {2.2.4}数学模型在多作战要素场景下的推广}{16}{subsection.2.2.4}%
+\contentsline {section}{\numberline {2.3}武器目标分配问题的外逼近求解方法}{17}{section.2.3}%
+\contentsline {subsection}{\numberline {2.3.1}武器目标分配问题的两种凸优化建模方式}{18}{subsection.2.3.1}%
+\contentsline {subsection}{\numberline {2.3.2}基于分支定界框架的外逼近方法}{19}{subsection.2.3.2}%
+\contentsline {section}{\numberline {2.4}数值结果}{23}{section.2.4}%
+\contentsline {chapter}{\numberline {第3章\hspace {.3em}}基于列生成的复杂静态武器目标分配求解算法}{25}{chapter.3}%
+\contentsline {section}{\numberline {3.1}引言}{25}{section.3.1}%
+\contentsline {section}{\numberline {3.2}列生成算法}{25}{section.3.2}%
+\contentsline {subsection}{\numberline {3.2.1}复杂的武器目标分配问题数学模型及线性化}{25}{subsection.3.2.1}%
+\contentsline {subsection}{\numberline {3.2.2}一个例子}{27}{subsection.3.2.2}%
+\contentsline {subsection}{\numberline {3.2.3}线性化后的武器目标分配问题的列生成形式}{29}{subsection.3.2.3}%
+\contentsline {section}{\numberline {3.3}子问题的求解}{33}{section.3.3}%
+\contentsline {subsection}{\numberline {3.3.1}子问题的两种外逼近建模方法}{33}{subsection.3.3.1}%
+\contentsline {subsection}{\numberline {3.3.2}子问题的求解}{36}{subsection.3.3.2}%
+\contentsline {section}{\numberline {3.4}加速技巧}{38}{section.3.4}%
+\contentsline {subsection}{\numberline {3.4.1}有效不等式}{38}{subsection.3.4.1}%
+\contentsline {subsection}{\numberline {3.4.2}选择非最优的子问题结果}{41}{subsection.3.4.2}%
+\contentsline {section}{\numberline {3.5}数值实验}{41}{section.3.5}%
+\contentsline {chapter}{\numberline {第4章\hspace {.3em}}基于列生成的动态武器目标分配问题研究}{43}{chapter.4}%
+\contentsline {section}{\numberline {4.1}动态武器目标分配问题的数学建模}{43}{section.4.1}%
+\contentsline {subsection}{\numberline {4.1.1}动态武器目标分配问题的场景描述与数学建模}{43}{subsection.4.1.1}%
+\contentsline {subsection}{\numberline {4.1.2}动态武器目标分配问题的数学模型}{45}{subsection.4.1.2}%
+\contentsline {section}{\numberline {4.2}基于列生成的求解方法}{49}{section.4.2}%
+\contentsline {subsection}{\numberline {4.2.1}列生成框架}{49}{subsection.4.2.1}%
+\contentsline {subsection}{\numberline {4.2.2}子问题求解技巧}{51}{subsection.4.2.2}%
+\contentsline {section}{\numberline {4.3}数值实验}{53}{section.4.3}%
+\contentsline {chapter}{\numberline {第5章\hspace {.3em}}总结与展望}{55}{chapter.5}%
+\contentsline {chapter}{\numberline {附录 A\hspace {.3em}}中国科学院大学学位论文撰写要求}{57}{appendix.A}%
+\contentsline {chapter}{参考文献}{59}{section*.78}%
+\contentsline {chapter}{致谢}{61}{appendix*.80}%
