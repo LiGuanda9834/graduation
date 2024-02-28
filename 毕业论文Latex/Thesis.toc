@@ -17,7 +17,7 @@
 \contentsline {section}{\numberline {2.3}武器目标分配问题的外逼近求解方法}{17}{section.2.3}%
 \contentsline {subsection}{\numberline {2.3.1}武器目标分配问题的两种凸优化建模方式}{18}{subsection.2.3.1}%
 \contentsline {subsection}{\numberline {2.3.2}基于分支定界框架的外逼近方法}{19}{subsection.2.3.2}%
-\contentsline {section}{\numberline {2.4}数值结果}{23}{section.2.4}%
+\contentsline {section}{\numberline {2.4}数值实验}{23}{section.2.4}%
 \contentsline {chapter}{\numberline {第3章\hspace {.3em}}基于列生成的复杂静态武器目标分配求解算法}{25}{chapter.3}%
 \contentsline {section}{\numberline {3.1}引言}{25}{section.3.1}%
 \contentsline {section}{\numberline {3.2}列生成算法}{25}{section.3.2}%

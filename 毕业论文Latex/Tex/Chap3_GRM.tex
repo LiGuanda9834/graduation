@@ -1,0 +1,460 @@
+
+\chapter{基于列生成的复杂静态武器目标分配求解算法}
+\section{引言}
+对于武器目标分配问题而言，无论是经典模型还是改进后的包含雷达的复杂模型，其求解的难点都在于目标函数的非线性。为了解决非线性的
+
+\section{列生成算法}
+\subsection{复杂的武器目标分配问题数学模型及线性化}
+为了应对具体的作战场景，我们分别考虑问题的约束条件和目标函数：
+优化目标一：最小化敌方目标的加权存活概率
+\textbf{优化目标}
+\begin{equation*} \tag{毁伤概率}
+	f_1(x) = \sumFromTo{j=1}{n}{v_j\zkh{1-\prod_{i=1}^{m}{\prod_{k=1}^{t}{\xkh{1-p_{ikj}}^{x_{ikj}}}}}}
+\end{equation*}
+
+优化目标二：最小化整体的作战时间
+\begin{equation*}\tag{打击时间}
+    f_2(x) = \max_{i,k,j}\dkh{C_{ikj}x_{ikj}}
+\end{equation*}
+
+\textbf{约束}
+雷达通道约束：杀伤链使用雷达 $j$ 的次数应小于等于其通道数 $r_j$。
+\begin{equation}
+    \sum_{i \in I} \sum_{k \in J} x_{ikj} \leq r_j, \quad \forall j \in K
+\end{equation}
+
+发射车通道约束：杀伤链使用发射车 $i$ 的次数应小于等于弹药数 $l_i$。
+\begin{equation}
+    \sum_{k \in J} \sum_{j \in K} x_{ikj} \leq l_i, \quad \forall i \in I
+\end{equation}
+
+杀伤链数目约束：目标 $k$ 最多可构建的杀伤链条数为 $s_k$。
+\begin{equation}
+    \sum_{j \in K} \sum_{i \in I} x_{ikj} \leq s_k, \quad \forall k \in J
+\end{equation}
+
+我们将两个优化目标进行线性组合，并使用参数$\theta$控制二者之间的权重，可以得到问题的模型为：
+\optimalProblem{\max}{f_1(x) - \theta f_2(x)}
+{\sumFromTo{k=1}{t}{\sumFromTo{j=1}{n}{x_{ikj}}\leq r_i,\quad \forall i = 1,\cdots,m\\ 
+& \sumFromTo{i=1}{m}{\sumFromTo{j=1}{n}{x_{ikj}}\leq l_k},\quad \forall k = 1,\cdots\,t\\ 
+&\sumFromTo{i=1}{m}{\sumFromTo{k=1}{t}{x_{ijk}}\leq s_j}\quad \forall j = 1,\cdots,n}\\
+& x_{ijk} \in \mathbb{Z}^+}
+
+此时我们希望通过与第二章中提到的类似的方式来对问题进行线性化。与之前的转化方式类似，假设共有$m$个发射车与$t$个雷达，最多共可以生成$m\times t$条杀伤链。此时对于任意一个目标$j$，其最多分配$s_j$个杀伤链，因此最多有$(1 + s_j)^(m\times t)$种不同的场景。此时使用整数变量$n_{si}$，表示在第$s$个场景下，使用武器$i$的个数. 类似地，$n_{sk}$表示在第$s$个场景下，使用雷达$k$的个数。由于一个杀伤链一定对应着一个雷达和一个武器，因此在任何场景下，都有
+\begin{equation*}
+    \sumFromTo{i=1}{m}{n_{si}} = \sumFromTo{k=1}{t}{n_{sk}}
+\end{equation*}
+而$q_{js}$ 依然代表问题加权后的毁伤概率，
+\begin{equation*}
+    q_{js} = V_j\zkh{1-\prod_{i=1}^{m}{\prod_{k=1}^{t}{\xkh{1-p_{ikj}}^{n_{sik}}}}}
+\end{equation*}
+同时用$y_{js}$来表示是否对目标$j$使用场景$s$，假设$\hat{S}$表示满足约束的场景，比如在上述模型中要求$\sum_{j \in K} \sum_{i \in I} x_{ikj} \leq s_k, \quad \forall k \in J$，则要求所有$\hat{S}$中的场景中杀伤链的个数都小于等于$s_k$，整体就可以得到如下的线性化模型：
+
+\optimalProblem{\min}{\sumFromTo{j = 1}{n}{\sum_{s \in S}{q_{js}y_{js}}} + \theta \max_{i,k,j}\dkh{C_{ikj}x_{ikj}}}
+{\sumFromTo{j = 1}{n}{\sum_{s\in S}{n_{si}y_{js}}}\leq r_i \quad &\forall ~ i \in I\\
+& \sumFromTo{j = 1}{n}{\sum_{s\in S}{n_{sk}y_{js}}}\leq l_k \quad &\forall ~ k \in K\\
+& \sum_{s \in S}{y_{js}} = 1 \quad &\forall ~ j \in J\\
+& y_{js} \in \left\{ 0,1 \right\} &\forall ~ j\in J,\ s\in \hat{S}}
+而此时目标函数中的时间项依然不是线性形式，因此增加变量$\eta$来控制目标函数中的时间项，来把问题转化为一个线性规划
+
+\optimalProblem{\min}{\sumFromTo{j = 1}{n}{\sum_{s \in S}{q_{js}y_{js}}} + \theta \eta}
+{\sumFromTo{j = 1}{n}{\sum_{s\in S}{n_{si}y_{js}}}\leq l_j \quad &\forall ~ i \in I\\
+& \sumFromTo{j = 1}{n}{\sum_{s\in S}{n_{sk}y_{js}}}\leq r_i \quad &\forall ~ k \in K\\
+& t_{js}y_{js} - \eta \leq 0 \quad &\forall ~ j \in J, s \in \hat{S} \\
+& \sum_{s \in S}{y_{js}} = 1 \quad &\forall ~ j \in J\\
+& y_{js} \in \left\{ 0,1 \right\} &\forall ~ j\in J,\ s\in \hat{S}\\
+& \eta \geq 0}
+
+\subsection{一个例子}
+我们在这里举一个最简单的例子来指出线性化方法时如何转化模型的。
+假设一个最简单的情形，共有2个目标，2个武器，2个雷达，即$i = j = k = 2$，此时雷达与武器的组合共有$2 \times 2 = 4$种，即有四种可以选的杀伤链。我们假设每个杀伤链给每个目标最多分配一次（即仅仅考虑0-1变量），此时可能的打击场景共有$2 ^ 4 = 16$种，即每个杀伤链都可以选择或者不选择，我们用一个4位的二进制数表示这几种杀伤链是否被选择。在对内容进行枚举时，先对武器进行内层循环，再对雷达进行外层循环，即四个位置分别是（W0R0, W1R0, W0R1, W1R1)
+
+由于二进制数可以与10进制数一一对应，因此这16个不同的打击场景可以被0到15的数字来表示，比如6对应的二进制数就是(0,1,1,0)，它所代表的打击场景就是选择“武器1和雷达0”与“武器0和雷达1”这两条杀伤链对某个目标进行打击。下面如果我们用一个10进制数表示一个打击场景，指的就是它转化为二进制数后对应的打击场景。
+
+而$q_js$表示的就是对目标$j$使用打击场景$s$时的加权概率，比如$q_{1,6}$对应的就是使用$(0, 1, 1, 0)$来打击目标$1$是的毁伤概率，即
+\begin{equation*}
+    q_{1, 6} = V_1(1 - p_{1, 1, 0}) (1 - p_{1,0,1})
+\end{equation*}
+因此问题可以被表述为
+\begin{align}
+    \text{Minimize} \quad & (q_{1,0}y_{1,0} + q_{1,1}y_{1,1} + \cdots + q_{1,15}y_{1,15}) + (q_{2,0}y_{2,0} + q_{2,1}y_{2,1} + \cdots + q_{2,15}y_{2,15}) \\
+    \text{s. t.} \quad & (n_{0, i_0} \cdot y_{1,0} + n_{1, i_0} \cdot y_{1,1} + n_{2, i_0} \cdot y_{1,2} + \cdots + n_{15, i_0} \cdot y_{1,15}) \\
+    & + (n_{0, i_0} \cdot y_{2,0} + n_{1, i_0} \cdot y_{2,1} + \cdots + n_{15, i_0} \cdot y_{2,15}) \leq 1 \\
+    & (n_{0, i_1} \cdot y_{1,0} + n_{1, i_1} \cdot y_{1,1} + n_{2, i_1} \cdot y_{1,2} + \cdots + n_{15, i_1} \cdot y_{1,15})+ \\
+    & (n_{0, i_1} \cdot y_{2,0} + n_{1, i_1} \cdot y_{2,1} + \cdots + n_{15, i_1} \cdot y_{2,15}) \leq 1 \\
+    & (n_{0, r_0} \cdot y_{1,0} + n_{1, r_0} \cdot y_{1,1} + n_{2, r_0} \cdot y_{1,2} + \cdots + n_{15, r_0} \cdot y_{1,15})+ \\
+    & (n_{0, r_0} \cdot y_{2,0} + n_{1, r_0} \cdot y_{2,1} + \cdots + n_{15, r_0} \cdot y_{2,15}) \leq 1 \\
+    & (n_{0, r_1} \cdot y_{1,0} + n_{1, r_1} \cdot y_{1,1} + n_{2, r_1} \cdot y_{1,2} + \cdots + n_{15, r_1} \cdot y_{1,15})+ \\
+    & (n_{0, r_1} \cdot y_{2,0} + n_{1, r_1} \cdot y_{2,1} + \cdots + n_{15, r_1} \cdot y_{2,15}) \leq 1 \\
+    & y_{1,0} + y_{1,1} + \cdots + y_{1,15} = 1 \\
+    & y_{2,0} + y_{2,1} + \cdots + y_{2,15} = 1 \\
+    & t_{1,0} \cdot y_{1,0} + t_{1,1} \cdot y_{1,1} + \cdots + t_{1,15} \cdot y_{1,15} = 1 \\
+    & t_{2,0} \cdot y_{2,0} + t_{2,1} \cdot y_{2,1} + \cdots + t_{2,15} \cdot y_{2,15} = 1 \\
+    & y_{1,0}, y_{1,1}, \ldots, y_{1,7}, y_{2,0}, y_{2,1}, \ldots, y_{2,7} \in \{0, 1\}
+\end{align}
+
+
+而每一个打击场景都能够计算出它使用了多少武器和多少雷达，比如上面提到的6场景，就是使用了武器1与雷达0和武器0与雷达1的组合，此时一共使用了武器0，武器1，雷达0，雷达1各一次，即$n_{6, i_0} = n_{6, i_1} = n_{6, r_0} = n{6, r_1} = 1$ ，因此这个场景对应原问题中的列就是$(1,1,1,1,1,0,t_{1,6},0)^T$。用这样的方式就能够得到原问题转化后的线性化模型。
+
+可以看出，这个形式中的变量个数非常多，而列生成为解决这个问题提供了一个框架，下一节中将详细介绍如何利用列生成来求解这个问题。
+
+\subsection{线性化后的武器目标分配问题的列生成形式}
+首先我们会求解这个问题的线性松弛，因此整数限制（5）可以被转化为$0 \leq y_js \leq 1$。此时由于约束（4），当所有的$y_js \leq 0$成立时，$y_js \leq 1$自然成立，因此可以舍去$y_js \leq 1$部分。
+
+再观察约束（3），可以看到这系列的约束数量非常多，有指数多个，但是由于约束（4）的存在，这些约束可以进行聚合，将其整合为一个约束，且该整合方式在不影响整数可行域的同时，还会让问题的松弛变得更紧
+\begin{equation*}
+    \sum_{s \in S}{t_{js}y_{js}} - \eta \leq 0 \quad \forall ~ j \in J
+\end{equation*}
+\begin{proposition}
+    在$\sum_{s \in S}{y_{js}} = 1$且$y_{js}, t_{js} \geq 0$的条件下新的约束形式比原来的约束形式$t_{js}y_{js} - \eta \leq 0 \quad \forall ~ j \in J, s \in \hat{S}$更紧
+\end{proposition}
+\begin{proof}
+    我们假设$j$是固定的，当
+    \begin{equation*}
+        \sum_{s \in S}{t_{js}y_{js}} - \eta \leq 0
+    \end{equation*}
+    成立时，由于$t_{js} \geq 0, y_{js} \geq 0$，因此
+    \begin{equation}
+        t_{js^*}y_{js^*} \leq \eta - \sum_{s \in S, s \neq s^*}{t_{js}y_{js}} \leq \eta
+    \end{equation}
+
+    因此新的约束比原来的约束更紧。同时假设原来一组解满足约束$\sum_{s \in S}{y_{js}} = 1$，则
+    \begin{equation*}
+        \sum_{s \in S}{t_{js}y_{js}} \leq \max_{s \in S}(t_{js})\cdot \sum_{s \in S}{y_{js}} = \max_{s \in S}t_{js} \leq \eta
+    \end{equation*}
+    因此新的约束不会割掉原来的整数点。因此新的约束比原来的约束更紧。
+\end{proof}
+在对约束进行上述调整后，我们可以得到问题的线性松弛：
+\optimalProblem{\min}{\sumFromTo{j = 1}{n}{\sum_{s \in S}{q_{js}y_{js}}} + \theta \eta}
+{\sumFromTo{j = 1}{n}{\sum_{s\in S}{n_{si}y_{js}}}\leq r_i \quad &\forall ~ i \in I\\
+& \sumFromTo{j = 1}{n}{\sum_{s\in S}{n_{sk}y_{js}}}\leq l_j \quad &\forall ~ k \in K\\
+& \sum_{s \in S}{t_{js}y_{js}} - \eta \leq 0 \quad &\forall ~ j \in J \\
+& \sum_{s \in S}{y_{js}} = 1 \quad &\forall ~ j \in J\\
+& y_{js}, \eta \geq 0 &\forall ~ j\in J,\ s\in S}
+
+可以看出，这个模型的约束个数为$m + n + 2 \times k$，但是变量个数却是$2^(m * n) \times k + 1$，具有指数多列，因此对于这个模型我们希望采用列生成的框架来对问题进行求解，因此我们把这个问题称为武器目标分配问题列生成的主问题（MP）
+
+
+根据上面的数学形式，该问题中的约束分为4类，我们从上到下依次称其为：武器约束、雷达约束、时间约束、目标约束。记这四个约束的对偶变量分别为武器约束$u_i$，雷达约束$\mu_k$，时间约束$w_j$，目标约束$v_j$，即可写出对偶问题：
+\optimalProblem{\max}
+{\sumFromTo{i=1}{m}{4u_i} + \sumFromTo{k=1}{t}{8\mu_k}+\sumFromTo{j=1}{n}{v_j}}
+{\sumFromTo{i=1}{m}{n_{si}u_i} + \sumFromTo{k=1}{t}{n_{sk}\mu_k} + t_{js} w_j + v_j \leq q_{js},\quad \forall j \in J, s \in S_j^w \quad (P)\\ &\sumFromTo{j=1}{J}{-w_j}\leq 1  \\ &u_i \leq 0, \quad\mu_k \leq 0 \\& w_j \leq 0, \quad v_j\ \mathrm{free}}
+
+列生成的基本思路是先选择其中一部分列作为备选列，其他列对应的变量值设置为0。我们假设第$W$次计算时，每个目标$j$备选的场景即列的集合为$S_j^w$，则可以得到列生成的约化主问题：
+\optimalProblem{\min}{\sumFromTo{j = 1}{n}{\sum_{s \in S}{q_{js}y_{js}}} + \theta \eta}
+{\sumFromTo{j = 1}{n}{\sum_{s\in S_j^W}{n_{si}y_{js}}}\leq r_i \quad &\forall ~ i \in I\\
+& \sumFromTo{j = 1}{n}{\sum_{s\in S_j^W}{n_{sk}y_{js}}}\leq l_j \quad &\forall ~ k \in K\\
+& \sum_{s \in S_j^W}{t_{js}y_{js}} - \eta \leq 0 \quad &\forall ~ j \in J \\
+& \sum_{s \in S_j^W}{y_{js}} = 1 \quad &\forall ~ j \in J\\
+& y_{js}, \eta \geq 0 &\forall ~ j\in J,\ s\in S_j^W}
+
+求解这个问题得到的最优解也会获得一组对偶变量，记它们为武器约束$u_i^W$，雷达约束$\mu_k^W$，时间约束$w_j^W$，目标约束$v_j^W$，此时它们是RMP对偶问题的最优解，但是未必是MP对偶问题最优解，在经典的列生成方法中，我们会找到那些被违背最严重的对偶约束，即希望找到
+\begin{equation*}
+    \sumFromTo{i=1}{m}{n_{si}u_i} + \sumFromTo{k=1}{t}{n_{sk}\mu_k} + t_{js} w_j + v_j \leq q_{js}
+\end{equation*}
+这些约束哪一项被最严重地违背，即
+\begin{equation*}
+    q_{js} - \zkh{\sumFromTo{i=1}{m}{n_{si}u_i} + \sumFromTo{k=1}{t}{n_{sk}\mu_k} + t_{js} w_j + v_j} < 0
+\end{equation*}
+何时成立，并且希望尽可能地小。而针对每个目标，不同的对偶约束对应了原问题中的不同列，即不同的场景$s$，因此问题就会被转化为
+\begin{equation*}
+    \min q_{js} - \zkh{\sumFromTo{i=1}{m}{n_{si}u_i} + \sumFromTo{k=1}{t}{n_{sk}\mu_k} + t_{js} w_j + v_j}
+\end{equation*}
+
+如果最小值比$0$还小，则意味着依然没有求到最优解，而如果全部最小值不小于0，则迭代终止。否则把选择出的列加入到RMP中，即得到了新的约化主问题，循环迭代知道没有违背的对偶约束，即终止迭代。
+
+为了证明上述改进的列生成算法能够在有限步内终止且达到最优解，我们需要分两步进行证明，第一步是如果上述终止条件成立，则一定可以得到问题的最优解。第二步则是算法迭代一定可以在有限步终止于这个条件。
+对于第一步，证明需要用到如下引理：
+\begin{lemma}[对偶定理]
+    对于任意的线性规划问题，如果原问题
+\begin{align*}
+    \text{min} \quad & c^T x \\
+    \text{s.t.} \quad & Ax = b \\
+    & x \geq 0
+\end{align*}
+和对偶问题
+\begin{align*}
+    \text{max} \quad & b^T y \\
+    \text{s.t.} \quad & A^T y \leq c
+\end{align*}
+存在可行解$x$和$y$，则有
+
+(1) 原问题的目标函数值大于等于对偶问题的目标函数值 $c^T x \geq b^T y$。
+
+(2) 如果存在一组原问题的解 $x^*$ 和对偶问题的解 $y^*$，使得原问题的目标函数值和对偶问题的目标函数值相等，即有 $c^T x^* = b^T y^*$，则 $x^*$ 和 $y^*$ 分别是原问题和对偶问题的最优解。
+\end{lemma}
+
+在列生成方法中，简约主问题(RMP)的最优解 $x_B$ 是原问题的一组可行解（即其他变量取0），但简约主问题的对偶问题的解 $\pi$ 未必是主问题(MP)对偶问题的可行解。如果验证了所有的约化费用都大于等于0，即保证了对偶问题的约束 $A^T y \leq c$ 一定成立，从而$\pi$是主问题对偶问题的一组可行解。由于 $x_B$ 和 $\pi$ 分别是简约主问题和简约主问题对偶问题的最优解，因此可以保证 $c^T x_B = b^T \pi$，即根据对偶定理，即得到$x_B$ 和 $\pi$是原始主问题MP的最优性。
+
+对于第二步，证明如下：
+
+假设原问题有 $m$ 列（变量），主问题初始化有 $m_0$ 列（变量），如果在步骤四的判断过程中发现存在使得约化系数小于0的变量（列），则将其加入到主问题的备选列当中，每次迭代至少使得备选列增加1，因此经过至多 $m-m_0$ 次迭代，主问题就会包含原问题全部的列，此时一定会得到原问题的最优解。而当在步骤四的判断过程中发现不存在使得约化系数小于0的变量（列），则问题已经达到了最优解。
+
+综上所述，可以得到如下定理：
+
+\begin{theorem}
+    使用上述的列生成算法，问题一定可以在 $m-m_0$ 次迭代内终止，且此时可得到原问题的最优解。
+\end{theorem}
+    
+
+而如何有效地求解列生成子问题是这个算法的关键，因此在下一小节中我们会详尽地讨论问题的求解方式。
+\section{子问题的求解}
+\subsection{子问题的两种外逼近建模方法}
+在求解子问题时，列生成需要求解的子问题形式为：
+\begin{equation*}
+    \min q_{js} - \zkh{\sumFromTo{i=1}{m}{n_{si}u_i} + \sumFromTo{k=1}{t}{n_{sk}\mu_k} + t_{js} w_j + v_j}
+    \text{}
+\end{equation*}
+
+\begin{align*}
+    \min \quad & q_{js} - \zkh{\sumFromTo{i=1}{m}{n_{si}u_i} + \sumFromTo{k=1}{t}{n_{sk}\mu_k} + t_{js} w_j + v_j}
+    \text{s.t.} \quad & s \in S_k^W
+\end{align*}
+将$q_{js}$的定义代入，同时$s$就对应的是全部的可行场景，因此可以重新转化为使用$x$来表现的形式，从而得到的形式是：
+\begin{equation*}
+    V_j\zkh{\prod_{i=1}^{m}{\prod_{k=1}^{t}{\xkh{1-p_{ikj}}^{x_{ikj}}}}}-\sumFromTo{i=1}{m}{\xkh{u_i\sumFromTo{k=1}{t}{x_{ik}}}} - \sumFromTo{k=1}{t}{\xkh{\mu_k\sumFromTo{i=1}{m}{x_{ik}}}} - \max\dkh{t_{ikj} \cdot x_{ikj}} w_j - v_j
+\end{equation*}
+这个问题的每一个可行解对应的都是一个MP问题的列（变量），求解这个列生成子问题就可以得到下一步往列生成主问题中增加的变量。
+
+而对这个式子进行一下整合，对于时间项的处理与主问题类似，需要引入一个额外的变量来消除式子中的$\max$项，为了叙述简单，在这里不考虑时间项，而仅仅考虑其他的项，我们就可以得到子问题的目标函数：
+\begin{equation*}
+    V_j\zkh{\prod_{i=1}^{m}{\prod_{k=1}^{t}{\xkh{1-p_{ikj}}^{x_{ikj}}}}}- \sumFromTo{i=1}{m}{\sumFromTo{k=1}{t}{(u_i + \mu_k)x_{ik}}}
+\end{equation*}
+而这个问题的约束则需要准确地刻画所有的$S$中的场景，这与原问题的刻画方式类似，因此可以得到约束：
+
+\begin{equation*}
+    \sumFromTo{k=1}{t}{x_{ik}}\leq r_i, \quad \forall i \in I
+\end{equation*}
+
+\begin{equation*}
+    \sumFromTo{i=1}{m}{x_{ik}}\leq l_k, \quad \forall k \in K
+\end{equation*}
+
+\begin{equation*}
+    x_{ik} \leq s_j
+\end{equation*}
+
+
+将目标与约束进行整合后，假设不考虑时间，即可得到\textbf{子问题形式为}：
+\optimalProblem{\min}{V_j\zkh{\prod_{i=1}^{m}{\prod_{k=1}^{t}{\xkh{1-p_{ikj}}^{x_{ik}}}}}- \sumFromTo{i=1}{m}{\sumFromTo{k=1}{t}{(u_i + \mu_k)x_{ik}}} - v_j}
+{\sumFromTo{k=1}{t}{{x_{ik}}\leq r_i,\quad \forall i = 1,\cdots,m\\ 
+& \sumFromTo{i=1}{m}{{x_{ik}}\leq l_j},\quad \forall k = 1,\cdots\,t}\\
+& x_{ik} \leq s_j \\
+& x_{ik}\in \mathbb{N}}
+
+为了能够更好地讨论问题的数学形式，记$x_{ik}$的线性系数$u_i + \mu_k$为$c_{ik}$，$-v_j$记为$c_0$，表示目标函数的常数项，此时有$c_{ik} \geq 0$，则问题的形式可以被写为：
+\optimalProblem{\min}{V_j\zkh{\prod_{i=1}^{m}{\prod_{k=1}^{t}{\xkh{1-p_{ikj}}^{x_{ik}}}}} + \sumFromTo{i=1}{m}{\sumFromTo{k=1}{t}c_{ik}x_{ik}} + c_0}{\sumFromTo{k=1}{t}{{x_{ik}}\leq r_i,\quad \forall i = 1,\cdots,m\\ & \sumFromTo{i=1}{m}{{x_{ik}}\leq l_j},\quad \forall k = 1,\cdots\,t}\\ x_{ik} \leq s_j \\
+& x_{ik}\in \mathbb{N}}
+
+可以看出，此时子问题与原问题具有一定的相似性，但是把原问题中多个目标之间的耦合拆解为每个目标单独计算，但是对于选择的杀伤链增加了一个类似于费用的线性惩罚项。当我们假设问题是0-1变量时，原模型的变量个数是$m \times n \times k$，它的搜索空间为$2^{m \times n \times k}$，但是子问题则仅仅有$m \times k$个变量，因此它的搜索空间为$2^{m \times k}$，因此比原问题更容易进行求解。
+
+同样，由于我们已经证明了$f_j(x) = \prod_{i=1}^m (1 - p_{ij}) ^ {x_{ij}}$ 是一个凸函数，子问题同样也是凸的，因此我们对这个凸问题同样也有转化为指数的处理方式，它们影响了使用外逼近方法来求解问题的形式，第二种建模方式首先考虑引入变量$\eta$来将非线性转移到约束中
+
+\optimalProblem{\min}{V_j\eta + \sumFromTo{i=1}{m}{\sumFromTo{k=1}{t}c_{ik}x_{ik}} + c_0}
+{  \prod_{i=1}^{m}{\prod_{k=1}^{t}{\xkh{1-p_{ikj}}^{x_{ik}}}} \leq \eta 
+\\ &\sumFromTo{k=1}{t}{{x_{ik}}\leq r_i,\quad \forall i = 1,\cdots,m
+\\ & \sumFromTo{i=1}{m}{{x_{ik}}\leq l_k},\quad \forall k = 1,\cdots\,t}
+\\ & x_{ik} \leq s_j
+\\ & x_{ik}\in \mathbb{N}}
+
+增加一个中间参数$w$，来让非线性部分的结构变得更加简单
+即考虑对于：
+\begin{equation*}
+    \prod_{i=1}^{m}{\prod_{k=1}^{t}{\xkh{1-p_{ikj}}^{x_{ik}}}} \leq e^w
+\end{equation*}
+两边取对数，即可得到
+\begin{equation*}
+    \sum_{i=1}^{m}{\sum_{k=1}^{t}{x_{ik}\ln\xkh{1-p_{ikj}}}} \leq w
+\end{equation*}
+从而问题的形式即为：
+\optimalProblem{\min}{V_j\eta + \sumFromTo{i=1}{m}{\sumFromTo{k=1}{t}c_{ik}x_{ik}} + c_0}
+{  e^w \leq \eta 
+\\ & \sum_{i=1}^{m}{\sum_{k=1}^{t}{x_{ik}\ln\xkh{1-p_{ikj}}}} \leq w
+\\ &\sumFromTo{k=1}{t}{{x_{ik}}\leq r_i,\quad \forall i = 1,\cdots,m
+\\ & \sumFromTo{i=1}{m}{{x_{ik}}\leq l_k},\quad \forall k = 1,\cdots\,t}
+\\ & x_{ik} \leq s_j
+\\ & x_{ik}\in \mathbb{N}}
+
+\subsection{子问题的求解}
+对于上面两种数学模型，由于它们都是凸的，因此都可以使用外逼近的求解框架，即考虑给定一个凸函数$f(x)$与其中一点$x^*$，由于不等式一定成立：
+\begin{equation*}
+    f(x) \geq f(x^*) + \nabla f(x^*) (x - x^*)
+\end{equation*}
+在该问题中
+\begin{equation*}
+    f(x) = V_j\zkh{\prod_{i=1}^{m}{\prod_{k=1}^{t}{\xkh{1-p_{ikj}}^{x_{ik}}}}}- \sumFromTo{i=1}{m}{\sumFromTo{k=1}{t}{(u_i + \mu_k)x_{ik}}} - w_j - v_j
+\end{equation*}
+
+因此有$x_{ik}$前的线性化系数为：
+\begin{equation*}
+    \frac{\partial f(x)}{\partial x_{ik}} = V_j \ln (1-p_{ikj})\prod_{i=1}^{m}{(1-p_{ikj})}^{x_{ik}} - u_i  - \mu_k \defeq l_{ik}
+\end{equation*}
+
+因此，在$\overline{x_{ik}}$处的外逼近割为：
+\begin{equation*}
+    \eta_j \geq V_j\sumFromTo{i=1}{m}{\sumFromTo{k=1}{t}{\zkh{ \ln (1-p_{ikj})\prod_{i=1}^{m}{(1-p_{ikj})}^{x_{ik}} - u_i  - \mu_k}\xkh{x_{ik} - \overline{x_{ik}}}}} + f(x_{ik})
+\end{equation*}
+
+该割的右端项即为：
+\begin{equation*}
+    V_j\sumFromTo{i=1}{m}{\sumFromTo{k=1}{t}{\zkh{ \ln (1-p_{ikj})\prod_{i=1}^{m}{(1-p_{ikj})}^{x_{ik}} - u_i  - \mu_k}}}\overline{x_ik} - f(\overline{x_ik}) \defeq r_{\overline{x_{ik}}}
+\end{equation*}
+
+
+\optimalProblem{\min}{\eta}{\sumFromTo{i=1}{m}{\sumFromTo{k=1}{t}{l_{ik} x_{ik}}} - \eta \leq  r_{\overline{x_{ik}}}\\& \sumFromTo{k=1}{t}{{x_{ik}}\leq 4,\quad \forall i = 1,\cdots,m\\ & \sumFromTo{i=1}{m}{{x_{ik}}\leq 8},\quad \forall k = 1,\cdots\,t}\\& x_{ik} \in \dkh{0,1,2,3,4}}
+
+而对于另外一个模型，其非线性项为：
+\begin{equation*}
+    e^w \leq \eta
+\end{equation*}
+
+此时，假设有一个点$(x^*, w^*, \eta^*)$。则问题增加的外逼近割就是
+\begin{equation*}
+    e^{w^*}(w - w^*) + e^{w^*} \leq \eta
+\end{equation*}
+整理成变量在左侧的形式就是
+\begin{equation*}
+    e^{w^*}w - \eta \leq e^{w^*} (w^* - 1)
+\end{equation*}
+注意到根据问题的形式，在$x_{ij}$给定时，显然有$e^w = \eta = \prod_{i=1}^{m}{\prod_{k=1}^{t}{\xkh{1-p_{ikj}}^{x_{ik}}}}$时，目标函数值最小，因此可以得到问题的外逼近主问题形式就是
+\optimalProblem{\min}{V_j\eta + \sumFromTo{i=1}{m}{\sumFromTo{k=1}{t}c_{ik}x_{ik}} + c_0}
+{  e^{w^*}w - \eta \leq w^* - e^{w^*},\quad \forall (x,w,\eta)
+\\ & \sum_{i=1}^{m}{\sum_{k=1}^{t}{x_{ik}\ln\xkh{1-p_{ikj}}}} \leq w
+\\ & \sumFromTo{k=1}{t}{{x_{ik}}\leq 4,\quad \forall i = 1,\cdots,m
+\\ & \sumFromTo{i=1}{m}{{x_{ik}}\leq 8},\quad \forall k = 1,\cdots\,t}
+\\ & x_{ik} \in \dkh{0,1,2,3,4}}
+
+应用外逼近求解方法就可以求解这两种不同形式的外逼近
+
+在使用外逼近方法进行求解时，需要一组初始外逼近割作为外逼近方法的启动，选择合适的初始割能够有效地降低外逼近方法的求解速度。考虑到问题的目标函数为
+\begin{equation*}
+    \min V_j\zkh{\prod_{i=1}^{m}{\prod_{k=1}^{t}{\xkh{1-p_{ikj}}^{x_{ik}}}}}- \sumFromTo{i=1}{m}{\sumFromTo{k=1}{t}{(u_i + \mu_k)x_{ik}}} - w_j - v_j 
+\end{equation*}
+
+由于随着$x_{ik}$的增加，第一项会减少，第二项会增加，因此可以通过选择$1-p_{ijk}+\alpha(ui+\mu_k)$来选择问题的初始割。
+
+设置初始割为$\overline{x_{ik}}$使$1-p_{ijk}+\alpha(ui+\mu_k)$最大的一个$x_{ij}$, 并设置其值为4来满足约束条件
+
+\section{加速技巧}
+\subsection{有效不等式}
+在进行组问题求解时，如果能够增加一些不等式，使得约束构成的空间能够尽可能地逼近问题的凸包，能够有效降低分支定界方法的迭代速度。因此我们希望能够对问题的性质进行分析，来得到一些有效不等式。
+
+\textbf{武器数量不等式}
+
+在求解武器目标分配问题的子问题的动机是，希望找到对偶模型中，约束尚未满足,即
+\begin{equation*}
+    V_j \left( \prod_{i=1}^m (1 - p_{ij}) ^ {x_{i}}  \right) - \sumFromTo{i=1}{m}{u_i x_i} - v_j < 0
+\end{equation*}
+的行，我们希望分析这个函数的性质，来给子问题的求解带来一些帮助。
+
+首先我们注意到，上个式子可以被拆分成三个部分：$V_j \left( \prod_{i=1}^m (1 - p_{ij}) ^ {x_{i}}  \right)$，$- \sumFromTo{i=1}{m}{u_i x_i}$，$v_j$。
+由于对偶模型保证了$u_i \leq 0$，因此这三个部分中的前两个部分都是大于等于0的。因此如果有
+\begin{equation*}
+    \sumFromTo{i=1}{m}{-u_i x_i} - v_j \geq 0
+\end{equation*}
+或者
+\begin{equation*}
+    V_j \left( \prod_{i=1}^m (1 - p_{ij}) ^ {x_{i}}  \right) - v_j \geq 0
+\end{equation*}
+对Reduced cost 的检验都不可能小于0。基于此，我们进行了一个简单的处理：
+
+\textbf{下界}
+
+我们考虑这部分
+\begin{equation*}
+    \sumFromTo{i=1}{m}{-u_i x_i} - v_j \geq 0
+\end{equation*}
+由于线性相加，加的越多就越大，因此可以对$-u_i$的值进行排序。若其中前$k$小的$-u_i$之和已经满足大于等于$v_j$了，就一定会导致上述不等式成立。
+
+上面这个思想的数学表述是，假设对$u_i$已经根据大小进行了排序，排序后为$u_1' < u_2' < \cdots < u_m'$，则假设
+\begin{equation*}
+    U_j \defeq \min \left\{ m, \jihe{k}{k = 1, \cdots, m,\ \sumFromTo{i=1}{k}{(-u_i') - v_j > 0 }}\right\}
+\end{equation*}
+若$\sumFromTo{i=1}{m}{x_i} > U_j$，则一定有
+\begin{equation*}
+    \sumFromTo{i=1}{m}{-u_i x_i} - v_j \geq 0
+\end{equation*}
+即该解无法满足$rc < 0$的条件，一定不会被加入到改进解中。
+
+
+\textbf{上界}
+与下界类似，我们考虑
+\begin{equation*}
+    V_j \left( \prod_{i=1}^m (1 - p_{ij}) ^ {x_{i}}  \right) - v_j \geq 0
+\end{equation*}
+由于这个相乘的形式，乘得越多，第一项的值越小，因此我们同样可以对$(1 - p_{ij})$来进行从小到大的排序（即对$(p_{ij})$进行从大到小的排序）。如果武器分配的比较少，导致
+加权后的毁伤概率已经大于了$v_j$，就会导致上述不等式一定成立。
+
+类似地，假设对$(p_{ij})$已经根据大小进行了排序，排序后为$p_{1j}' < p_{2j}' < \cdots < p_{mj}'$，则假设
+\begin{equation*}
+    W_j \defeq \max \left\{ 0, \jihe{k}{k = 1, \cdots, m,\ V_j\prod_{i=1}^{k}{(1 - p_{ij})} - v_j > 0 }\right\}
+\end{equation*}
+
+若$\sumFromTo{i=1}{m}{x_i} < W_j$，则一定有
+\begin{equation*}
+    V_j \left( \prod_{i=1}^m (1 - p_{ij}) ^ {x_{i}}  \right) - v_j \geq 0
+\end{equation*}
+即该解无法满足$rc < 0$的条件，一定不会被加入到改进解中。
+
+\begin{proposition}
+    假设对$u_i$已经根据大小进行了排序，排序后为$u_1' < u_2' < \cdots < u_m'$，则假设
+    \begin{equation*}
+        U_j \defeq \min \left\{ m, \jihe{k}{k = 1, \cdots, m,\ \sumFromTo{i=1}{k}{(-u_i') - v_j > 0 }}\right\}
+    \end{equation*}
+    且对$(p_{ij})$已经根据大小进行了排序，排序后为$p_{1j}' < p_{2j}' < \cdots < p_{mj}'$，则假设
+    \begin{equation*}
+        W_j \defeq \max \left\{ 0, \jihe{k}{k = 1, \cdots, m,\ V_j\prod_{i=1}^{k}{(1 - p_{ij})} - v_j > 0 }\right\}
+    \end{equation*}
+    则必须要满足条件
+    \begin{equation*}
+        W_j \leq \sumFromTo{i=1}{m}{x_i} \leq U_j
+    \end{equation*}
+    才有可能得到使得目标函数值小于0.
+\end{proposition}
+证明已经由上面的内容保证。
+
+\begin{proposition}
+    当$p_i \in (0, 1),\ x \in \mathbb{N}$时，有： 
+    \begin{equation*}
+        \prod_{i=1}^{n}(1-p_i)^{x_i} \geq 1 - \sumFromTo{i=1}{n}{p_i x_i}
+    \end{equation*}
+\end{proposition}
+\begin{proof}
+    使用归纳法进行证明。
+
+    当$x_i = 0$的时候$(1-p_i)^{x_i} = 1$，从而仅仅考虑那些非0$x$的项，即希望证明
+    \begin{equation*}
+        \prod_{i=1}^{n}(1-p_i) \geq 1 - \sumFromTo{i=1}{n}{p_i}
+    \end{equation*}
+    当$n=0$的时候，这个不等式是显然成立的。
+    假设不等式在$n$的时候成立，此时由于
+    而考虑由于
+    \begin{equation*}
+        \prod_{i=1}^{n}(1-p_i) p_{n+1} \leq p_{n+1}
+    \end{equation*}
+    从而二式相减可以得到
+    \begin{align*}
+        \prod_{i=1}^{n}(1-p_i) - \prod_{i=1}^{n}(1-p_i) p_{n+1} &\geq 1 - \sumFromTo{i=1}{n}{p_i} - p_{n+1} \\
+        \prod_{i=1}^{n + 1}(1-p_i) &\geq 1 - \sumFromTo{i=1}{n + 1}{p_i}
+    \end{align*}
+    从而归纳地证明了这个问题
+\end{proof}
+
+在子问题将非线性项转移到约束中的模型中，凸约束为：
+\begin{equation*}
+    \prod_{i=1}^{m}{\prod_{k=1}^{t}{\xkh{1-p_{ikj}}^{x_{ik}}}} \leq \eta
+\end{equation*}
+因此根据上面的不等式，有：
+\begin{align*}
+	-\eta &\leq - \prod_{i=1}^{m}{\prod_{k=1}^{t}{\xkh{1-p_{ikj}}^{x_{ik}}}} \\ 
+	&\leq \sum_{i=1}^{m}{\sum_{k=1}^{t}{p_{ik} x_{ik} - 1}}\\
+\end{align*}
+这就是问题的一个有效不等式
+
+
+\subsection{选择非最优的子问题结果}
+基本思想
+
+在经典的列生成的求解算法框架中，每次的列生成子问题求解的都是使得简约价格最小的对偶问题的行，其终止条件是最小的行也大于0时，就得到了对偶问题的可行解，从而依据对偶定理，证明了求解得到的解就是问题的最优解。这个方法能够有效执行的基本思想是，那些在对偶问题中简约价格较低的变量增加到原问题中有可能更有效地接近问题的最优解，这个思想在一个通用的问题中可能会有一定的效果，但是在这个具体的问题结构中，在一些特殊的情境下，比如武器和目标的个数相当且各个武器对目标的打击概率相近时，最优解的方案往往对应着每个目标仅分配了1到2个武器的打击，这意味着每次选择求解到最优的子问题可能会陷入局部极值但并不能正确地选择最终适合的变量。同时因为每次子问题求解的时间相对比较久，且利用分支定界求解问题的过程中有机会获得多个不同的可行解，且它们都可能对OA子问题起到改进的作用，因此可以每次不止选择一个解，而是可以同时选择多个解，这样将会更充分地利用每次求解子问题的信息，以降低主问题的求解次数。
+
+\section{数值实验}

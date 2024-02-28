@@ -1,0 +1,386 @@
+
+
+
+
+\chapter{基于列生成的动态武器目标分配问题研究}
+\section{动态武器目标分配问题的数学建模}
+\subsection{动态武器目标分配问题的场景描述与数学建模}
+对于动态武器目标分配问题，在目前的研究中主要有两种不同的建模思路
+
+第一类模型被称为 shoot-look-shoot 模型，它对于每次打击结果都可以进行观察，因此在打击的过程中目标是否中存在都是确定的。在这种模型中，假设问题共有两阶段，武器在第一阶段中将武器分配给目标，之后随着打击结束对问题进行一次观察。针对第一次打击带来的结果，将剩余的武器分配给幸存的目标。
+
+第二类模型被称为两阶段模型，或者更一般地说多阶段模型，它与 shoot-look-shoot 的不同之处在于它不允许在打击后观察，且每个目标仅被考虑一次，若在某一阶段没被摧毁，后续将不再有摧毁该目标的机会。也就是说，在 shoot-look-shoot 问题中，作战目的是对给定数量的目标进行反复攻击，直到所有目标都被摧毁或达到迭代次数的限制。 而在2阶段问题中，第一次会出现的目标是给定的，但是在第二阶段，有可能会重新出现新的目标，且目标的数量和类型仅仅能够给出一个概率分布而不是确定性的。在已知多阶段的目标的概率分布的前提下，希望能够给出对目标毁伤的数学期望最高的方案。
+
+动态武器目标分配问题的复杂程度明显高于静态武器目标分配，但是却能够更好地结合实际情况。在更加复杂的模型中，也存在将两种动态模型结合在一起的情况，但是目前针对此问题尚没有比较好的精确求解方法。由于动态武器目标分配问题的算法复杂程度较高，因此目前针对动态武器目标分配的精确算法往往都对模型进行了非常严格的限制，比如Eckler和Burr (1972)[6] 假设所有武器具有相同的杀伤概率并且所有目标具有相同的价值，这导致该问题的数学模型过于简略，从而对实际应用场景不高。
+
+为了能够解决解决实际的作战问题，我们希望能够对于作战场景进行数学建模，使得模型既能够从全局的角度解决包含时间的问题，又控制求解的复杂度在一定的时间范围内。下面我们就将描述对于问题的建模与数学描述。
+
+首先我们对于作战场景进行简短的直观描述。
+
+假设整个战场可以被离散为多个时间节点，在每个时间节点处都需要完成一次决策，并且也仅仅允许在这些时间节点分配对应的杀伤链进行打击，优化的目标函数是包括毁伤概率、作战花费、作战时间等在内的多个作战目标，整个模型有如下的假设：
+
+\begin{itemize}
+    \item 确定性假设：每个目标的价值是固定的，不随着时间发生变化。同时在给定打击时点、目标、雷达、发射车、弹药的条件下，雷达-发射车-弹药组成的杀伤链对目标的毁伤概率是定值，不随时间发生变化。
+    \item 毁伤概率假设：我们假设每条杀伤链之间是相互独立的。如果一个目标被多个杀伤链同时打击，那么该目标的存活概率就是每个杀伤链打击后的存活概率的乘积。如果一个目标在不同时间被多个不同的杀伤链打击，则它的存活概率是累积到该时点的所有杀伤链打击下存活概率的乘积。优化目标中的毁伤概率就是用1减去存活概率的大小。
+    \item 优化目标假设：我们的目标是整合多个优化目标，包括最大化消除的来袭目标威胁值、最小化作战时间和最小化作战消耗。这几个目标之间的关系为线性相加，其系数可随着战场态势由指挥官负责调整，以体现多个作战目标的优先级。
+    \item 资源限制假设：由于资源特性，我们假设为每个目标分配杀伤链时，需要考虑到各类限制，具体而言包括：
+    \begin{enumerate}[label=\roman*.]
+        \item 在每个时点杀伤链使用雷达的次数应小于等于其通道数
+        \item 在每个时点杀伤链使用发射车的次数应小于等于发射车载弹量。
+        \item 每个发射车具有总体的弹药上限，在各个时点使用这个发射车的次数累加也应该有上限。
+        \item 针对每个目标，最多可构建的杀伤链条数有上限。
+        \item 每个雷达与一个目标绑定，每个目标占用雷达的一个通道。当雷达锁定一个目标时，多个武器可以同时使用这个雷达的锁定信息。
+        \item 每个武器与一个雷达绑定，在武器发射到击中目标这段时间内，不允许更换武器使用的雷达。
+        \item 雷达窗口约束：针对每个来袭目标，不同的雷达仅在部分时间能够扫描到这个目标，雷达对目标的锁定必须在这个窗口期内。
+        \item 打击窗口约束：针对每个来袭目标，能够被打击得窗口有限，由此限制了给定杀伤链攻击的时点，不能在超出时点范围外对目标进行打击。
+    \end{enumerate}
+\end{itemize}
+
+对于时间的离散，如果对整体采用均匀离散，如果离散间隔较小，会导致计算复杂度过大，并且过度详细地考虑了比较久的未来，未来节点可能随态势发生较大变化，因此太过详细的考虑或许并不合理。但如果离散间隔较大，则可能导致近期的决策没有办法有效制定，降低了整体的复杂度。因此采用了这种先疏后密的离散方式，近期节点详细考虑，安排较为精细的作战策略。长期节点进行粗略考虑，未来随战场态势进行调整。
+
+作为一个求解系统，在这个数学模型中系统的输入与输出分别是：
+\begin{itemize}
+    \item 输入：
+    \begin{enumerate}
+        \item 敌方有多个目标来袭，可对目标路径进行初步预测，以得到每个目标的可打击时间、雷达可探测时间。
+        \item 不同时间使用不同资源对敌方目标的杀伤概率、目标的权重。
+        \item 其他的目标及资源特性。
+    \end{enumerate}
+    \item 输出：在每个打击时间点，如何给每个目标安排杀伤链。
+\end{itemize}
+
+
+
+\subsection{动态武器目标分配问题的数学模型}
+为了对上述假设进行数学建模的构建，我们首先引入以下符号
+\begin{itemize}
+    \item $t$：时间，$t \in T \defeq \dkh{t_0,\cdots,t_N}$，为了有效降低考虑的时点，$T$并非均匀分布. 举例而言，可以设置为\begin{equation*}
+        T = \dkh{1,2,3,4,5,10,15,20,25,50,75,100,200,300,400,500,\cdots}
+    \end{equation*}
+    \item $N$：离散化的武器发射时间点数量。
+    \item $T_k$：时间窗，表示第$k$个目标允许打击的时间点，$T_k \subseteq T$
+    \item $p_{ijt}^k$：杀伤概率，表示对目标$k$，在时间$t$，使用武器$i$和雷达$j$组成的杀伤链的杀伤概率。
+    \item $w_k$：目标$k$最后的打击时间，达到$w_k$则认为目标已经命中我方关键内容。
+    \item $R_k$：目标的权重
+    \item $\hat{T}_{i,t}^k$：在时间$t$，使用武器$i$攻击目标$k$所需要的时间
+\end{itemize}
+
+\textbf{决策变量}
+\begin{itemize}
+    \item  $x_{ijt}^k$：决策变量，表示对目标$k$，在时间$t$，使用武器$i$和雷达$j$组成的杀伤链的使用次数。变量类型为整数变量，如果限制每个杀伤链最多使用1次，则决策变量为0-1变量。
+    \item $z_{jt}^k$：决策变量，表示对目标$k$，在时间$t$，是否使用雷达$j$进行锁定。变量类型为0-1变量。
+\end{itemize}
+
+\textbf{时间窗口}
+\begin{itemize}
+    \item $[L_{k}, U_k]$：目标允许打击的时间窗口。只有在这个时间窗口内，允许武器进行打击。
+    \item $[L_{j, k}^R, U_{j,k}^R]$，雷达$j$能够扫描到目标$k$的时间窗口。只有在这个窗口内，雷达能够锁定目标，因此武器打击的整个过程应该囊括在这个范围内。
+\end{itemize}
+
+
+\textbf{资源能力约束}
+
+首先在每个具体的时间阶段，武器和雷达限于本身的能力，会有一个允许同时锁定/攻击的目标上限
+
+\textbf{武器资源约束}
+
+每个时间点武器最多用于$l_i$条杀伤链。
+\begin{equation*}
+    \sum_{j, k} x_{i,j,t}^k \leq l_i, \quad \forall t, i 
+\end{equation*}
+
+\textbf{雷达的通道约束}
+
+同一时间，雷达最多锁定$r_j$个目标。
+\begin{equation*}
+    \sum_{k} z_{j,t}^k \leq r_j, \quad \forall t,j
+\end{equation*}
+
+\textbf{弹药上限约束}
+每种武器都有给定数量的弹药，在各个阶段使用的总弹药数有上限，但雷达却没有，假设其个数为$L_i$，则这个约束可以表示为
+\begin{equation*}
+    \sum_{j,k,t} x_{ijt}^k \leq L_i, \quad \forall i \in I
+\end{equation*}
+
+
+\textbf{锁定约束}：要求当武器进行打击直到打到目标的过程中，必须要有\textbf{唯一一个雷达进行锁定}
+\begin{equation*}
+    x_{i,j,t}^k \leq z_{j, t+n}^k, \quad \forall n = 0, 1, \cdots, \hat{T}_{i,t}^k 
+\end{equation*}
+
+\textbf{雷达窗口约束}：雷达必须在规定的窗口内
+\begin{equation*}
+    z_{j, t}^k \in \begin{cases} 
+        \dkh{0,1} & \text{if } t \in \zkh{L_{j,k}^R, U_{j,k}^R} \\
+        \dkh{0} & \text{else}  
+        \end{cases}\quad \forall j, k
+\end{equation*}
+
+\textbf{打击窗口约束}：武器的打击也必须在规定的窗口内
+\begin{equation*}
+    x_{i,j, t}^k \in \begin{cases} 
+        \dkh{0,1} & \text{if } x_{i,j,t}^k + \hat{T}_{j,t}^k \in \zkh{L_{k}, U_{k}} \\
+        \dkh{0} & \text{else}  
+        \end{cases}\quad \forall i, j, k
+\end{equation*}
+
+
+\textbf{在途打击约束}
+要求同时在途的打击数量是有上限的（不知道如何刻画）
+
+选择一：在每个时间阶段，如果限制给每个目标能够分配的杀伤链上限为$q_k$，则有约束
+\begin{equation*}
+    \sum_{i,j} x_{ijt}^k \leq q_{k, t}, \quad \forall t, k
+\end{equation*}
+
+选择二：在整个决策的过程中，每个目标分配的打击数量有上限
+\begin{equation*}
+    \sum_{i,j,t} x_{ijt}^k \leq q_{k, t}, \quad \forall k
+\end{equation*}
+
+\textbf{目标函数}
+
+中间参数：
+\begin{itemize}
+    \item $\eta_{t,k}$：在时间$t$，目标$k$的带时间权重摧毁概率，具体计算方式底下会写
+    \item $\alpha_{t,k}$：在时间$t$，目标$k$的时间权重与目标权重的系数
+    \item $d_k$：辅助参数，用于计算目标的时间紧迫程度。
+\end{itemize}
+
+截止到时刻$t_a$，目标的$k$的存活概率为
+\begin{equation*}
+    \prod_{t\in T_k, t \leq t_a}\prod_{i = 1}^{m}\prod_{j=1}^{n}(1-p_{ijt}^k)^{x_{ijt}^k}
+\end{equation*}
+
+为了符号简便，我们可以记在时刻$t$，打击目标$k$的击毁概率为$\hat{p_{t,k}}$
+\begin{equation*}
+    \hat{p_{t,k}} = \prod_{i = 1}^{m}\prod_{j=1}^{n}(1-p_{ijt}^k)^{x_{ijt}^k}
+\end{equation*}
+
+因此存活概率就是
+\begin{equation*}
+    \prod_{t\in T_k, t \leq t_a}\hat{p_{t,k}}
+\end{equation*}
+
+
+假设随着时间的推移，这个目标的紧迫程度会上升，因此对于给定目标$k$，我们用下面的系数刻画它的紧迫程度
+\begin{equation*}
+    \eta_{t_a,k} = \frac{1}{d_k + (w_k - t)}
+\end{equation*}
+因此同时考虑目标和时间的加权
+\begin{equation*}
+    \alpha_{t,k} = R_k \cdot \eta_{t_a,k} = \frac{R_k}{d_k + (w_k^u - t)}
+\end{equation*}
+
+其中$d_k$为一个参数，$w_k - t$表示剩余的时间间隔数。当$d_k$为0的时候，我们认为和打击目标的急迫程度与剩余时间窗数呈反比，加入平衡参数可以让这个曲线变得更平缓，但同样呈现随着时间窗变小紧迫性彼变大。
+利用这两个，我们可以计算出在时刻$t_a$，增加了紧迫程度加权的存活概率为
+\begin{equation*}
+    \eta_{t,k} \cdot \prod_{t = w_k^l}^{t_a}\prod_{i = 1}^{m}\prod_{j=1}^{n}(1-p_{i,j,t}^k)^{x_{i,j,t}^k}
+\end{equation*}
+
+从而可以得到以下三个目标函数：
+
+毁伤概率的目标函数
+\begin{equation*}
+    f_1 = \sum_{k} [ R_k \sum_{t_a \in T_k}{\eta_{t,k} \cdot \prod_{\substack{t \in T_k \\ t \leq t_a}}\prod_{i = 1}^{m}\prod_{j=1}^{n}(1-p_{i,j,t}^k)^{x_{i,j,t}^k}}]
+\end{equation*}
+
+花费的目标函数：
+\begin{equation*}
+    f_2 = \sum_{i,j}(c_{ij} \sum_{k}\sum_{t \in T_k}{x_{ijt}^k} )
+\end{equation*}
+
+时间的目标函数：
+\begin{equation*}
+    f_3 = T_{\mathrm{MAX}}
+\end{equation*}
+
+由此还会增加约束：
+\begin{equation*}
+    (\hat{T}_{j,t}^k + t) x_{i,j,t}^k \leq T_{\mathrm{MAX}},\quad \forall i, j, k, t
+\end{equation*}
+
+总的优化函数即考虑对上述三个优化目标的线性加权
+\begin{equation*}
+    \min \theta_1 f_1 + \theta_2 f_2 + \theta_3 T_{\mathrm{MAX}}
+\end{equation*}
+
+由于系数只跟目标函数有关，与约束无关，因此可以通过比例来让$f_1$前的系数为1，即目标函数为：
+\begin{equation*}
+    \min f_1 + \theta_2 f_2 + \theta_3 T_{\mathrm{MAX}}
+\end{equation*}
+
+由于花费和$\theta$都是线性项，因此可以把它们二者相乘得到整合后的系数，假设整合后的系数继续用$f_2$代替，则
+
+上述把所有目标和约束进行整合，即可得到总体的数学规划模型
+
+\optimalProblem{\min}{f_1 + f_2 + \theta_3 T_{\mathrm{MAX}}}{
+    \sum_{j, k} x_{i,j,t}^k \leq l_i, \quad \forall t, i \\
+    &\sum_{k} z_{j,t}^k \leq r_j, \quad \forall t,j \\
+    &\sum_{j,k,t} x_{ijt}^k \leq L_i, \quad \forall i \in I \\
+    &x_{i,j,t}^k \leq z_{j, t+n}^k, \quad \forall i, j, k, n = 0, 1, \cdots, \hat{T}_{i,t}^k \\
+    &\sum_{i,j,t} x_{ijt}^k \leq q_{k}, \quad \forall k \\
+    &(\hat{T}_{j,t}^k + t) x_{i,j,t}^k \leq T_{\mathrm{MAX}},\quad \forall i, j, k, t \\
+    & z_{j, t}^k \in \begin{cases} 
+        \dkh{0,1} & \text{if } t \in \zkh{L_{j,k}^R, U_{j,k}^R} \\
+        \dkh{0} & \text{else}  
+        \end{cases}\quad \forall j, k \\
+    &   x_{i,j, t}^k \in \begin{cases} 
+        \dkh{0,1} & \text{if } x_{i,j,t}^k + \hat{T}_{j,t}^k \in \zkh{L_{k}, U_{k}} \\
+        \dkh{0} & \text{else}  
+        \end{cases}\quad \forall i, j, k
+}
+
+
+\section{基于列生成的求解方法}
+\subsection{列生成框架}
+为了求解这个问题，我们依然希望考虑将问题线性化后使用列生成方法，考虑针对每个目标$k$，全部的打击场景，假设为$S_k$
+
+即针对每个目标$k$，一套完整的打击方案（在时刻$t$，是否使用武器$i$和雷达$j$，给定后，可以计算出这个打击方案的总花费（因为目标函数中的两项都是可以对$k$进行分离的）。
+
+同时，一套给定的打击方案对应在每个时刻使用的雷达与武器也是固定的，从而可以计算出对应的数值，我们使用$n$作为标记，举例而言，使用$n_{s_{ti}}$表示某个场景$s$在时间$t$使用武器$i$的个数。详细来说，与之前不同的符号约定可以写成：
+\begin{table}[ht]
+    \begin{tabularx}{\textwidth}{llX}
+        $n_{s_{ti}}$ & : & 打击场景$s$在时间$t$使用武器$i$的个数。\\
+        $n_{s_{tj}}$ & : & 打击场景$s$是时间$t$使用雷达$j$的个数。\\
+        $n_{s_{i}}$ & : & 打击场景$s$在使用武器$i$的个数，即所有时间点使用的$i$的个数相加。
+    \end{tabularx}
+\end{table}
+
+从而可以得到整体的数学模型
+
+\optimalProblem{\min}{\sumFromTo{k = 1}{K}{ \sum_{s \in {S_k}}{q_{ks}y_{ks}}} + \theta_3 T_{\mathrm{max}}}{
+    \sumFromTo{k = 1}{K}{\sum_{s \in {S_k}}{n_{s_{t,i}}y_{ks}}}\leq l_i \quad &\forall ~ i \in I, t \in T \\
+    & \sumFromTo{k = 1}{K}{\sum_{s \in {S_k}}{n_{t,j}y_{ks}}}\leq r_j \quad &\forall ~ j \in J, t \in T\\
+    & \sumFromTo{k = 1}{K}{\sum_{s \in {S_k}}{n_{s_{i}}y_{ks}}}\leq L_i \quad &\forall ~ i \in I \\
+    & \sum_{s \in {S_k}}{y_{ks}} = 1 \quad &\forall ~ k \in K\\
+    & \sum_{s \in S_k}t_{ks}y_{ks} \leq T_{\mathrm{max}} &\forall ~k \in K \\n
+    & y_{ks}\geq 0 &\forall ~ k,\ s\in {S_k}
+}
+其中$q_{js}$的为：
+\begin{equation*}
+    \sum_{t_a \in T_k}{\alpha_{t_a} \prod_{t \in T_k, t < t_a}\prod_{i = 1}^{m}\prod_{j=1}^{n}(1-p_{ijt})^{x_{ijt}}} + \sum_{t_a \in T_k}c_{ij}\sumFromTo{i=1}{m}{\sumFromTo{j=1}{n}{  x_{ijt}}}
+\end{equation*}
+如果考虑这个问题的列生成子问题，假设上面五类约束的对偶变量记为$u_{ti}$, $v_{tj}$，$w_i$，$z_k$，$TM_k$，则问题的对偶模型是：
+\optimalProblem{\max}
+{l_i \sum_{t \in T_k}\sumFromTo{i=1}{m}{u_{ti}} + r_j\sum_{t \in T_k} \sumFromTo{j=1}{n}{v_{tj}} + L_i \sumFromTo{i=1}{m}{w_i} + \sum_{k \in K}z_k}
+{\sum_{t \in T_k}\sumFromTo{i=1}{m}{n_{s_{ti}}u_{ti}} + \sum_{t \in T_k} \sumFromTo{j=1}{n}{n_{s_{tj}}\mu_{tj}} + \sumFromTo{i=1}{m}{w_i} + z_k + t_{ks} TM_k \leq q_{js},\quad \forall j \in J, s \in S_j^w \quad (P)
+\\ &\sumFromTo{k\in K}{\ }{-TM_k}\leq \theta_3  
+\\ &u_{ti}, \ v_{tj},\ w_i,\ TM_k \leq 0 \\& z_k\ \mathrm{free}}
+
+
+就需要从对偶问题的多个不同的行中选择出一列Reduced cost < 0 的一列，由于$TM_k$是定值，因此这个约束一定满足，因此对偶问题可能导致RC < 0的约束可以被写为：
+\begin{equation*}
+    \sum_{t \in T_k}\sumFromTo{i=1}{m}{n_{s_{ti}}u_{ti}} + \sum_{t \in T_k} \sumFromTo{j=1}{n}{n_{s_{tj}}\mu_{tj}} + \sumFromTo{i=1}{m}{w_i} + z_k + t_{js}TM_k \leq q_{js}
+\end{equation*}
+因此列生成子问题的判断依据就是对于一个给定的目标$k$，计算是否存在
+\begin{equation*}
+    q_{js} - \xkh{\sum_{t \in T_k}\sumFromTo{i=1}{m}{n_{s_{ti}}u_{ti}} + \sum_{t \in T_k} \sumFromTo{j=1}{n}{n_{s_{tj}}\mu_{tj}} + \sumFromTo{i=1}{m}{w_i} + z_k + t_{js}TM_k} < 0
+\end{equation*}
+
+从而子问题就是
+\optimalProblem{\min }{\sum_{t_a \in T_k}{\alpha_{t_a} \prod_{t \in T_k, t < t_a}\prod_{i = 1}^{m}\prod_{j=1}^{n}(1-p_{ijt})^{x_{ijt}}} + \sum_{t_a \in T_k}\sumFromTo{i=1}{m}{\sumFromTo{j=1}{n}{( c_{ij} - u_{it} - v_{tj} - w_i)x_{ijt}} - z_k - t_{js} TM_k}}
+{\sum_{j} x_{ijt} \leq l_i, \quad \forall t, i  
+\\& z_{jt} \leq r_j, \quad \forall t, j
+\\& \sum_{j,t} x_{ijt} \leq L_i, \quad \forall i \in I
+\\&x_{i,j,t} \leq z_{j, t+n}, \quad \forall i, j;  n = 0, 1, \cdots, \hat{T}_{i,t}^k 
+\\&\sum_{i,j,t} x_{ijt} \leq q, \quad \forall k 
+\\& z_{j, t} \in \begin{cases} 
+        \dkh{0,1} & \text{if } t \in \zkh{L_{j,k}^R, U_{j,k}^R} \\
+        \dkh{0} & \text{else}  
+        \end{cases}\quad \forall j
+\\&   x_{i,j,t} \in \begin{cases} 
+        \dkh{0,1} & \text{if } x_{i,j,t}^k + \hat{T}_{j,t}^k \in \zkh{L_{k}, U_{k}} \\
+        \dkh{0} & \text{else}  
+        \end{cases}\quad \forall i, j
+\\& x_{ijt} \in \mathbb{N}
+}
+其中$\alpha_{t}$是当前的权重，表示当前目标随着$t$的变化的权重，随着时间越大，距离最终允许的打击时间越近，这个数就会越大
+
+
+\subsection{子问题求解技巧}
+应用之前的记号，并假设线性项系数被整合为
+\begin{equation*}
+    \hat{c_{ijt}} = c_{ij} - u_{it} - v_{th} - w_i
+\end{equation*}
+
+同时记问题的截距为：
+\begin{equation*}
+    c_0 \defeq - z_k - TM_k
+\end{equation*}
+
+同时因为
+\begin{equation*}
+    t_{ks} = \max{x_{i,j,t} \cdot t_{i, j, t}}
+\end{equation*}
+因此可以增加一个变量$T_{\max}$，从而约束多了
+\begin{equation*}
+    x_{i,j,t} * t_{i,j,t} \leq T_{\max}
+\end{equation*}
+
+因此新的子问题形式为：
+\optimalProblem{\min }{\sum_{t_a \in T_k}{\alpha_{t_a} \prod_{t \in T_k, t \leq t_a}\hat{p_t}} + \hat{c_{ijt}}x_{ijt} + c_0 + c_1 t_{\max}}
+{\sum_{j} x_{ijt} \leq l_i, \quad \forall t, i  
+\\& z_jt \leq r_j, \quad \forall t, j
+\\& \sum_{j,t} x_{ijt} \leq L_i, \quad \forall i \in I
+\\&x_{i,j,t} \leq z_{j, t+n}, \quad \forall i, j, t;  n = 0, 1, \cdots, \hat{T}_{i,t}^k 
+\\&(t + \hat{T}_{i,j,t}^k)\cdot x_{i,j,t} \leq t_{\max}
+\\&\sum_{i,j,t} x_{ijt} \leq q, \quad \forall k 
+\\& z_{j, t} \in \begin{cases} 
+        \dkh{0,1} & \text{if } t \in \zkh{L_{j,k}^R, U_{j,k}^R} \\
+        \dkh{0} & \text{else}  
+        \end{cases}\quad \forall j
+\\&   x_{i,j,t} \in \begin{cases} 
+        \dkh{0,1} & \text{if } x_{i,j,t}^k + \hat{T}_{j,t}^k \in \zkh{L_{k}, U_{k}} \\
+        \dkh{0} & \text{else}  
+        \end{cases}\quad \forall i, j
+\\& t_{\max} \in \mathbb{R}
+}
+考虑上面目标函数中的非线性项
+\begin{equation*}
+    F(x) = \sum_{t_a \in T_k}{\alpha_{t_a} \prod_{t \in T_k, t \leq t_a}\prod_{i = 1}^{m}\prod_{j=1}^{n}(1-p_{ijt})^{x_{ijt}}}
+\end{equation*}
+
+针对每项引入一个$\eta_{t_a}$，则需要增加如下约束：
+\begin{equation*}
+    \prod_{t \in T_k, t \leq t_a}\prod_{i = 1}^{m}\prod_{j=1}^{n}(1-p_{ijt})^{x_{ijt}} \leq \eta_{t_a},\quad t_a \in T_k
+\end{equation*}
+与之前类似，记这个不等式左边的项为$f_{t_a}(x)$，对于任何一个整数点$x^*$，由这个凸约束带来的外逼近割是
+\begin{equation*}
+    f_{t_a}(x^*) + \nabla f_{t_a}(x^*) (x - x^*) \leq \eta_{t_a} 
+\end{equation*}
+即：
+\begin{equation*}
+    f_{t_a}(x^*) + \sum_{t \in T_k, t \leq t_a}\sum_{i = 1}^{m}\sum_{j=1}^{n}\{\ln(1-p_{ijt})\cdot (x_{ijt} - x_{ijt^*})\} \leq \eta_{t_a}
+\end{equation*}
+如果采用这个形式的凸函数，则将上述步骤直接带入外逼近的框架进行求解即可。
+
+但是此时如果使用上面提到的第二种建模方式进行建模，由于多个非线性函数都和时间相关，因此问题的数学形式会有一定程度的改善。
+
+我们考虑额外引入$w$，可以得到每一个非线性项的形式是
+\begin{align*}
+    & e^{w_{t_a}} \leq \eta_{t_a},\quad t_a \in T_k\\
+    & \prod_{t \in T_k, t \leq t_a}\prod_{i = 1}^{m}\prod_{j=1}^{n}(1-p_{ijt})^{x_{ijt}} \leq e^{w_{t_a}},\quad t_a \in T_k
+\end{align*}
+从而我们可以得到
+\begin{equation*}
+    \sum_{t \in T_k, t \leq t_a}\sum_{i = 1}^{m}\sum_{j=1}^{n}(\ln(1-p_{ijt}) x_{ijt}) \leq w_{t_a},\quad t_a \in T_k
+\end{equation*}
+
+
+
+对于这些约束，我们可以将其替换为：
+\begin{equation*}
+    \sum_{t_a \leq t < t_{a + 1}}\sum_{i = 1}^{m}\sum_{j=1}^{n}(\ln(1-p_{ijt}) x_{ijt}) \leq w_{t_a + 1} - w_{t_a},\quad t_a \in T_k
+\end{equation*}
+
+可以看出，当采用新的约束形式时，原来的约束一定成立，因此新的约束比原来的约束更紧。但是由于在最有解处，有
+\begin{equation*}
+    \sum_{t \in T_k, t \leq t_a}\sum_{i = 1}^{m}\sum_{j=1}^{n}(\ln(1-p_{ijt}) x_{ijt}) = w_{t_a},\quad t_a \in T_k
+\end{equation*}
+此时在新的约束下也会成立，因此更紧的边界不会割掉最优解，因此对于这种建模场景下的武器目标分配问题，使用新的外逼近形式能够降低问题的搜索空间。
+
+
+
+
+\section{数值实验}

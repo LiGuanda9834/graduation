@@ -1,0 +1,274 @@
+\chapter{武器目标分配问题及基本求解方法}\label{chap:WTA}
+
+\section{引言}
+武器目标分配问题是军事领域的一个经典问题，它描述的作战场景是当敌方有多个来袭目标时，我方如何合理地分配作战资源，来尽可能摧毁敌方的来袭目标。在Manne 在 1958年提出的经典模型中，假设敌方有多个目标来袭，我方有不同的武器来对目标进行拦截，且对整体有如下的假设：
+\begin{itemize}
+    \item 确定性假设：每个目标的价值是固定的，不随着时间发生变化。同时在给定目标和武器的条件下，毁伤概率是定值且不随时间发生变化。
+    \item 毁伤概率假设：武器的打击之间是相互独立的。如果一个目标被多个武器同时打击，那么该目标的存活概率就是每个杀伤链打击后的存活概率的乘积。我们计算该目标中的毁伤概率就是用1减去存活概率的大小。
+    \item 资源限制假设：由于武器特性，第$i$个武器最多使用$l_i$次
+\end{itemize}
+在这些前提假设下，可以写出问题的数学模型：
+\begin{alignat}{3}
+    &\min\quad && \sum_{j=1}^n V_j \left( \prod_{i=1}^m (1 - p_{ij}) ^ {x_{ij}}  \right) \tag{P1.1} \\ 
+    &\text{s. t.}\quad &&\sum_{j=1}^n x_{ij} \leq l_i, \quad &\hspace{1cm}\forall ~ i \in I, \tag{P1.2}\\
+    & && x_{ij} \in \mathbb{N}, \quad &\hspace{1cm}\forall ~ j\in J, ~ i \in I. \tag{P1.3}
+\end{alignat}
+
+
+同样的实际场景从不同角度建模可能会得到形式不同的数学模型，而不同的建模方式对应了不同的求解方法，也显著地影响了问题的求解速度，因此如何对问题进行数学建模具有重要的研究意义。在2.1节中，我们将展开讨论对于的建模方法，首先给出武器目标分配问题在历史上的不同建模方式并指出它们的一些优劣，之后会给出对于问题进行线性化的方法，目前全部的精确求解方法都是基于不同角度的线性化，因此在这一小节中将展示两种比较重要的线性化思路，最后将给出数学模型在一个更复杂的作战场景下的推广。
+
+同时根据问题的形式可以看出，这个问题的难点主要在于目标函数中决策变量在指数项，具有明显的非线性，同时在后续的拓展模型中，对于概率的计算方式都与这个经典模式相似，因此如何有效地处理这个非线性项将是求解问题的关键。在2.2节中，将首先证明这个问题是一个凸优化问题，之后会给出应用外逼近方法来对该问题进行求解的一个思路。在凸整数规划问题中，外逼近方法的应用与连续问题有一定的区别，在这一节中也将详述如何有效地将分支定界方法与外逼近方法进行相互结合。
+
+在本章的内容中，如果不加以特殊说明，武器目标分配问题指的都是静态武器目标分配问题，即不考虑时间维度，而是仅仅在一个瞬时考虑如何进行武器的分配。
+
+\section{武器目标分配问题的数学建模}
+\subsection{经典模型的凸性证明}
+首先我们给出经典模型（P1）的凸性证明。
+\begin{proposition}
+    函数$f_j(x) = \prod_{i=1}^m (1 - p_{ij}) ^ {x_{ij}}$ 是一个凸函数
+\end{proposition}
+\begin{proof}
+    考虑问题的海森矩阵$H$中第$a$行$b$列的元素，即原函数对两个变量求偏导，可以得到项为：
+    \begin{equation*}
+        \frac{\partial f_j(x)}{\partial x_{aj} \partial x_{bj}} = \ln(1 - p_{aj})\ln(1-p_bj)f_j(x)
+    \end{equation*}
+    从而可以得到问题的海森矩阵为
+    \begin{equation*}
+        H = f_j(x)\begin{bmatrix}
+            \ln(1 - p_{1j})\ln(1-p_{1j}) & \ln(1 - p_{1j})\ln(1-p_{2j}) & \cdots & \ln(1 - p_{1j})\ln(1-p_{mj}) \\
+            \ln(1 - p_{2j})\ln(1-p_{1j}) & \ln(1 - p_{2j})\ln(1-p_{2j}) & \cdots & \ln(1 - p_{2j})\ln(1-p_{mj}) \\
+            \vdots & \vdots & \ddots & \vdots \\
+            \ln(1 - p_{mj})\ln(1-p_{1j}) & \ln(1 - p_{mj})\ln(1-p_{2j}) & \cdots & \ln(1 - p_{mj})\ln(1-p_{mj}) \\
+            \end{bmatrix}
+    \end{equation*}
+    如果我们记：
+    \begin{equation}
+        l = \left[ \ln(1-p_{1j}), \ln(1-p_{2j}), \cdots, \ln(1-p_{mj}) \right]
+        \end{equation}
+    则
+    \begin{equation*}
+        H = f_j(x) l\cdot l^T
+    \end{equation*}
+    由于$f_j(x) \geq 0$，因此它是正定矩阵，从而原函数是一个凸函数。
+\end{proof}
+由于多个凸函数的线性组合一定也是凸函数，因此我们可以得到如下命题
+\begin{proposition}
+    经典武器目标分配问题的目标函数是一个凸函数，优化问题是一个凸优化问题。
+\end{proposition}
+
+
+\subsection{武器目标分配问题的数学模型构建}
+在这一小节中，我们首先讨论对于经典模型的不同形式并对比它们之间的优劣，再给出动态武器目标分配问题的一些经典模型。
+
+\textbf{模型2} 如果限制每个武器最多使用一次，则变量$x_{ij}$就会退化为一个0-1变量，此时由于
+\begin{equation*}
+    (1 - p_{ij})^{x_{ij}} = 1 - x_{ij}p_{ij},\quad x = 0, 1
+\end{equation*}
+因此原问题可以转化为：
+\begin{alignat}{3}
+    &\min\quad && \sum_{j=1}^n V_j \left( \prod_{i=1}^m (1 - x_{ij} p_{ij})  \right) \tag{P1.1} \\ 
+    &\text{s. t.}\quad &&\sum_{j=1}^n x_{ij} \leq l_i, \quad &\hspace{1cm}\forall ~ i \in I, \tag{P1.2}\\
+    & && x_{ij} \in \mathbb{N}, \quad &\hspace{1cm}\forall ~ j\in J, ~ i \in I. \tag{P1.3}
+\end{alignat}
+此时与原问题相比，目标函数从指数函数变成了多项式函数，但是此时函数将不再具有凸性，因此这个模型更适合一些不利用问题凸性的算法（比如一些基于枚举算法），对于一些凸优化算法这个模型并不合适。
+
+同时对于原模型，可以采用取对数的方式来给问题进行等价的转化，假设$w_k \defeq \sumFromTo{i = 1}{m}{\ln(1 - p_{ij})x_ij}$，并引入变量$\eta$来指示这个指数变量，则原模型可以被转化为：
+\begin{alignat}{3}
+    &\min\quad && \sum_{k=1}^n V_k \eta_k \tag{P1.1} \\ 
+    &\text{s. t.}\quad &&\sum_{j=1}^n x_{ij} \leq l_i, \quad &\hspace{1cm}\forall ~ i \in I, \tag{P1.2}\\
+    & && e^{w_k} \leq \eta_k \\
+    & && \sumFromTo{i = 1}{m}{\ln(1 - p_{ij})x_{ij} = w_k} \\
+    & && x_{ij} \in \mathbb{N},\quad w,\eta \in \R \quad &\hspace{1cm}\forall ~ j\in J, ~ i \in I. \tag{P1.3}
+\end{alignat}
+这个模型将问题的非线性项转化为了一个比较形式上比较简单的函数，$e^{w_k} \leq \eta_k$，这个思想最早是由Ahuja (2007)[17] 提出的，Ahuja在文章中利用这个等价的转化将问题转变为网络流问题来进行求解，不过他在文章中采用以2为底的对数变换。同时根据Kline et al.(2017)[20] 得到得数值实验结果，采用 BARON 等商业全局优化求解器时，这个模型也比经典模型求解效果更好，在限定的时间内能够增加问题的求解规模。这个模型的方式相当于对空间进行了一些映射，因此在计算割平面时，不同的形式也会有不同的线性割平面，因此在后面的讨论中，也会针对这两种不同的形式提出不同的割平面。
+
+
+\subsection{静态武器目标分配问题的线性化方法}
+为了解决目标函数的非线性，Lu提出了一种对问题直接进行线性建模的方式，这种方式通过引入指数多的列个数来消除问题的非线性，虽然在文章中Lu假设了每种武器的容量都是1，但是可以将其推广到任何整数容量。由于新的建模方式可以有效利用多种整数线性规划和线性规划的技巧，这种线性化的建模方式有比较大的启发性，因此在这里将介绍推广后的线性化模型。
+
+假设一共有$m$个武器，则对于任意一个目标$j$，每个武器可以选择打击$j$或不打击$j$，并且之多打击$c_w$次，因此共有$(c_w + 1)^m$个不同的打击方案，我们称一个打击方案为一个场景，用$s_j$(scene)表示。由于每个目标备选的方案都是一样的，因此当不产生歧义的情况下，也使用$s$来表示一个场景。整体的决策过程就是给每个目标分配一个打击场景（包括不分配武器也是一种打击场景），而且各个目标之间的打击场景之间不能产生冲突，必须要满足与原来约束等价的各种约束。
+
+对于一个打击场景$s$，我们使用符号$n_{si}$表示在场景$s$中，第$i$个武器的使用次数。同时我们定义$q_{js} = V_j \prod_{i = 1}^m (1 - n_{si}\cdot p_{ij})$用来表示使用第方案$s$打击目标$j$的加权概率。最后我们使用决策变量$y_{js}$来表示是否对目标$j$使用场景$s$，这是一个0-1变量，因为一个场景要么被分配给了一个目标，要么没有被分配给这个目标。
+
+
+举例而言，假设共有8个武器，则使用第1，3，6号武器的攻击方案即记为$s^* = s_{[1,0,1,0,0,1,0,0]}$，$|S| = 2^8 = 256$，此时有：
+\begin{equation*} 
+    n_{s1} = n_{s3} = n_{s6} = 1,\ n_{s0} = n_{s2} = \cdots = n_{s7} = 0.
+\end{equation*}
+假设用这个打击场景打击目标$1$，则$q_{js} = V_1(1 - p_{11})(1 - p_{31})(1 - p_{61})$，可以看出，就是原模型中$x_{11} = x_{31} = x_{61} = 1$时目标$j$的赋权存活概率。此时$y_{1s^*} = 1$，$y_{1s} = 0,\ \forall s \neq s^*$
+
+使用上面的符号，我们可以写出这个武器目标分配问题的线性模型：
+\begin{alignat}{3}
+	&\min\quad && \sum_{j=1}^n \sum_{s=0}^{2^m -1} q_{js}y_{js} \tag{L1.1} \\ 
+	&\text{s. t.}\quad &&\sum_{j=1}^n \sum_{s=0}^{2^m -1} n_{si}y_{js} \leq l_i, \quad && \forall ~ i \in I, \tag{L1.2}\\
+	& && \sum_{s=0}^{2^m -1} y_{js} = 1, \quad && \forall ~ j \in J, \tag{L1.3}\\
+	& && y_{js} \in \left\{ 0,1 \right\}, \quad && \forall ~ j \in J, ~ s \in S. \tag{L1.4}
+\end{alignat}
+
+这是一个整数线性规划（ILP）问题，求解整数线性规划问题的一个常见办法是求解问题的松弛问题（Relaxation），并结合分支定界算法来找到最优解。因此对该问题进行松弛，可以得到如下松弛后的模型：
+
+松弛后的线性模型(L2)
+\begin{alignat}{3}
+	&\min\quad && \sum_{j=1}^n \sum_{s=0}^{2^m -1} q_{js}y_{js} \tag{L2.1} \\ 
+	&\text{s. t.}\quad &&\sum_{j=1}^n \sum_{s=0}^{2^m -1} n_{si}y_{js} \leq l_i, \quad && \forall ~ i \in I, \tag{L2.2}\\
+	& && \sum_{s=0}^{2^m -1} y_{js} = 1, \quad && \forall ~ j \in J, \tag{L2.3}\\
+	& && 0 \leq y_{js} \leq 1, \quad && \forall ~ j \in J, ~ s \in S. \tag{L2.4}
+\end{alignat}
+
+在这里，我们将原模型的整数约束放宽为连续约束，从而得到了松弛模型，同时注意到，在满足约束(L2.3) 的情况下，变量 $y_{js}$ 的取值范围自然就会限制在0到1之间，因此，将(L2.4)修改为$y_{js} \geq 0$ 的约束对最优解的求解没有任何影响，从而得到下面的模型：
+
+修改后的线性模型(L2')
+\begin{alignat}{3}
+	&\min\quad && \sum_{j=1}^n \sum_{s=0}^{2^m -1} q_{js}y_{js} \tag{L2'.1} \\ 
+	&\text{s. t.}\quad &&\sum_{j=1}^n \sum_{s=0}^{2^m -1} n_{si}y_{js} \leq l_i, \quad && \forall ~ i \in I, \tag{L2'.2}\\
+	& && \sum_{s=0}^{2^m -1} y_{js} = 1, \quad && \forall ~ j \in J, \tag{L2'.3}\\
+	& && y_{js} \geq 0, \quad && \forall ~ j \in J, ~ s \in S. \tag{L2'.4}
+\end{alignat}
+
+
+可以看出，这个模型虽然是线性模型，但是却具有指数数量级的列个数。线性化建模的方式能够比较容易地推广到后文中提到的多作战要素模型和时间模型。关于这个问题的求解方式，我们将放在第三章及第四章中进行详细阐述。
+
+\subsection{数学模型在多作战要素场景下的推广}
+在现代化的作战场景中，仅仅考虑武器与目标将无法有效地刻画作战场景，因此在模型中引入雷达作为另外一种作战要素，即针对每个来袭的目标，我们可以设计一条或多条“目标 - 雷达 - 发射车 - 弹药”的组合，我们称之为杀伤链。此时$x_{ijk}$和$p_{ijk}$代表的是对于目标$k$，使用武器$i$和雷达$j$进行打击的个数与概率。此时优化目标与之前类似，依然是最大化消除的来袭目标威胁值：
+\begin{equation*}
+    f_1(x) = \sumFromTo{j=1}{n}{v_j\zkh{1-\prod_{i=1}^{m}{\prod_{k=1}^{t}{\xkh{1-p_{ikj}}^{x_{ikj}}}}}}
+\end{equation*}
+但是约束在原来的基础上需要进行调整，即需要同时包含：每个发射车仅有$r_i$枚导弹，每个雷达最多连通$l_k$个发射车，在有的要求中，还会增加每个目标最多分配$s_j$个杀伤链的限制，由于增加该限制只会降低问题的求解难度，因此我们在本文的范围内并不考虑这个约束，因此我们可以得到新的数学模型为：
+\optimalProblem{\max}{\sumFromTo{j=1}{n}{v_j\zkh{1-\prod_{i=1}^{m}{\prod_{k=1}^{t}{\xkh{1-p_{ikj}}^{x_{ikj}}}}}}}{\sumFromTo{k=1}{t}{\sumFromTo{j=1}{n}{x_{ikj}}\leq r_i,\quad \forall i = 1,\cdots,m\\ & \sumFromTo{i=1}{m}{\sumFromTo{j=1}{n}{x_{ikj}}\leq l_k},\quad \forall k = 1,\cdots\,t\\ &\sumFromTo{i=1}{m}{\sumFromTo{k=1}{t}{x_{ijk}}\leq s_j}\quad \forall j = 1,\cdots,n}\\& x_{ijk} \in \mathbb{Z}^+}
+此时问题也可以比较自然地推广到线性化模型中：
+\optimalProblem{\min}{\sumFromTo{j = 1}{n}{\sum_{s \in S}{q_{js}y_{js}}}}
+{\sumFromTo{j = 1}{n}{\sum_{s\in S}{n_{si}y_{js}}}\leq l_i \quad &\forall ~ i \in I\\
+& \sumFromTo{j = 1}{n}{\sum_{s\in S}{n_{sk}y_{js}}}\leq r_j \quad &\forall ~ k \in K\\
+& \sum_{s \in S}{y_{js}} = 1 \quad &\forall ~ j \in J\\
+& y_{js} \in \left\{ 0,1 \right\} &\forall ~ j\in J,\ s\in S}
+
+在第三章中，我们将详细地介绍针对这个模型如何使用列生成方法进行求解。
+
+\section{武器目标分配问题的外逼近求解方法}
+在2.1节中，我们已经证明了问题具有凸性，因此一个直观的求解方法就是使用一些凸优化的手段来对问题进行直接求解。（差参考文献），如何对将目标函数中的非线性转化为约束中的非线性会影响问题的求解难度，而对于一个凸整数规划问题，外逼近方法的使用需要与分支定界方法进行结合。因此在本节中的第一部分将首先讨论两种对于问题的凸优化处理方式，并证明其中一种方式相比于另外一种方式更紧，而第二部分将介绍外逼近方法如何与分支定界框架结合，并给出这个问题使用外逼近进行求解的具体形式。
+\subsection{武器目标分配问题的两种凸优化建模方式}
+对于经典形式的武器目标分配问题，有两种建模方式能够将目标函数中的非线性部分转化到约束中，即：
+
+模型一：
+\begin{alignat}{3}
+    &\min\quad && \sum_{k=1}^n V_k \eta_k \tag{P1.1} \\ 
+    &\text{s. t.}\quad &&\sum_{j=1}^n x_{ij} \leq l_i, \quad &\hspace{1cm}\forall ~ i \in I, \tag{P1.2}\\
+    & &&  \prod_{i=1}^{m}{(1-p_{ij})^{x_{i}}} \leq \eta_k \\
+    & && x_{ij} \in \mathbb{N},\quad \eta_k \in \R \quad &\hspace{1cm}\forall ~ j\in J, ~ i \in I. \tag{P1.3}
+\end{alignat}
+与模型二：
+\begin{alignat}{3}
+    &\min\quad && \eta \tag{P1.1} \\ 
+    &\text{s. t.}\quad &&\sum_{j=1}^n x_{ij} \leq l_i, \quad &\hspace{1cm}\forall ~ i \in I, \tag{P1.2}\\
+    & &&  \sum_{j=1}^n V_j \prod_{i=1}^m (1 - p_{ij}) ^ {x_{ij}} \leq \eta \\
+    & && x_{ij} \in \mathbb{N},\quad \eta \in \R \quad &\hspace{1cm}\forall ~ j\in J, ~ i \in I. \tag{P1.3}
+\end{alignat}
+
+在这两个模型中，当$x_{ij}$的取值一定时，目标函数的取值是一样的，同时如果仅仅考虑$x$是整数时，二者的定义域也是一样的，但是当对问题进行线性松弛后，对应的约束会有所区别，在外逼近方法中计算出的外逼近割也会有所不同，由于更紧的松弛能够带来更好的计算效果，因此我们希望对比这两个模型松弛的紧致程度。
+
+\begin{proposition}
+    模型一比模型二的非线性模型与线性外逼近模型都更紧（模型一松弛的定义域被包含在模型二中）
+\end{proposition}
+\begin{proof}
+    对于任意$j$，若满足$\prod_{i=1}^{m}{(1-p_{ij})^{x_{i}}} \leq \eta_k$，则对这些不等式的进行线性加和，取系数为$V_j$，则可以得到模型二中的不等式，因此模型二的松弛定义域不会比模型一的松弛定义域更紧。
+    
+    当凸约束被转化为线性外逼近割后，证明类似。
+\end{proof}
+因此模型二的定义域比模型一更紧，在对多个凸函数进行线性加和时，使用类似模型二的方式来将约束转化到变量上效果更好。
+
+\subsection{基于分支定界框架的外逼近方法}
+求解凸整数规划时，外逼近方法将发生一定变化。最早由 Duran and Grossmann[]（差参考文献）提出整数规划的外逼近方法，它的核心思想是通过有限的外逼近割来将问题等价地转化为一个MILP问题。MILP中的约束时全体整数点处的外逼近割，且如果可行域中的整数点个数是有限的，则只需要在这些整数点设置外逼近割，即可将问题转化为约束个数是有限的（与连续的情形不同）MILP。用数学的语言来表述这一点，即当$f(x)$和$g(x)$都是凸函数时，下面两个模型是等价的：
+模型一(MINLP)：
+\optimalProblem{\min}{f(x)}{g_j(x) \leq 0, \forall j \ in J\\ & x \in X \subseteq {Z}^{|I|}}
+模型二(MILP - OA)：
+\optimalProblem{\min}{\eta}
+{\eta \geq f(x^*) + \nabla f(x^*)^T(x - x^*, \forall x^* \in X) 
+\\&f(x^*) + \nabla f(x^*)^T(x - x^*) \leq 0, \forall j \in J, x^* \in X
+\\& x \in X}
+\begin{proposition}
+    假设$X \neq \Phi$, $f$和$g$连续，凸，可微，且没有其他的非连续变量时，MINLP模型的最优值与MILP-OA模型的最优值相等，且任何一个MINLP的最优解也一定时MILP-OA问题的最优解。
+\end{proposition}
+而在武器目标分配问题当中，只有目标函数是非线性的，因此只需要将问题转化为
+\optimalProblem{\min}{\eta_j}{\eta_j \geq f(x^*) + \nabla f(x^*) (x - x^*),\quad \forall x^* \in X, \\ &x_i \in \dkh{0,1}}
+其中每一个由外逼近带来的约束：
+\begin{equation*}
+    \eta_j \geq f(x^*) + \nabla f(x^*) (x - x^*)
+\end{equation*}
+被称为一个外逼近割
+
+从实际求解的角度讲，虽然这两个问题等价，但是这个形式中的外逼近割个数等于整数点个数，如果将约束全部列出，相当于需要将全部的整数点进行枚举，这从计算量上而言是不现实的，因此基本的求解方式是先生成一个简约外逼近主问题(OA-MP($\hat{X}$))，它只包含一部分问题的约束，即
+
+\optimalProblem{\min}{\eta_j}{\eta_j \geq f(x^*) + \nabla f(x^*) (x - x^*),\quad \forall x^* \in \hat{X}, \\ &x_i \in \dkh{0,1}}
+
+这个算法的具体迭代方式与第一章中提到的外逼近迭代方式相似，但是终止条件有所不同。
+\begin{algorithm}[!htbp]
+    \small
+    \caption{外逼近算法}\label{alg:integer_outer_approximation}
+    \begin{algorithmic}[1]
+        \Procedure{外逼近}{$f, X$}\Comment{输入：$f$，可行域 $X$}
+        \State 初始化 $x^0 \in X$，$S^0 = \{(x, \eta) \in X \times \mathbb{R} : f(x^0) + \nabla f(x^0) (x - x^0) \leq \eta,\}$
+        \State 初始化 $\eta^0 = \arg \min \{\eta \in \R : \eta \geq f(x^0) + \nabla f(x^0) (x - x^0), x \in X\}$
+        \State $k \gets 0$
+        \While{$f(x^k) + \nabla f(x^k) (x - x^k) > \eta^k$}
+            \State 更新 $S^{k+1} = S^k \cap \{(x, \eta) \in X \times \mathbb{R} : f(x^k) + \nabla f(x^k) (x - x^k) \leq \eta^k, \forall i\}$
+            \State 求解近似问题 $\{\min \eta : (x, \eta) \in S^{k + 1}\}$，得到解 $(x^{k+1}, \eta^{k+1})$
+            \State $k \gets k + 1$
+        \EndWhile
+        \State \textbf{return} 解 $(x^{k}, \eta^{k})$\Comment{输出：凸优化问题的最优解}
+        \EndProcedure
+    \end{algorithmic}
+\end{algorithm}
+
+这个算法与经典的外逼近方法类似，同时根据定理，能够在有限步中终止。但是这个算法在第6步中需要求解一个整数规划问题，而且每次进行一步迭代都需要重新计算这个整数规划问题，这会带来额外的开销，因此需要将这个求解与分支切割方法（branch and cut）相结合，来降低问题的求解复杂度。
+
+同时我们注意到，虽然在全部的整数点增加外逼近割就可以保证两个问题的最优解等价，但是在任何一个分数点增加外逼近割依然是MILP的一个有效不等式，在进行分支定界的过程中计算线性松弛不可避免地会计算出多个分数点，此时由于外逼近割的计算比较简单，因此加入分数点处的外逼近割有可能会降低问题的求解复杂度。
+
+算法的基本思想是通过callback函数，在分支定界算法的基础上增加了外逼近割的部分，其基本思想与外逼近方法类似，先选择一部分外逼近割来得到一个OA-MP问题，在进行分支定界进行求解时，如果得到了一个整数可行解或者分数松弛解，就进行一次验证，如果此时得到的$(x,\eta)$组合不满足$f(x) \leq \eta$的约束，就意味着当前的OA-MP的定义域过大，无法割掉这个错误的解，此时就需要增加外逼近割来作为分支定界方法的全局割。其算法流程如下：
+
+\begin{algorithm}[!htbp]
+    \small
+    \caption{分支定界算法}\label{alg:branch_and_bound}
+    \begin{algorithmic}[1]
+        \Procedure{分支定界}{$f, X$}\Comment{输入：目标函数 $f$，可行域 $X$}
+        \State 初始化根结点 $q_0$，$q_0.\text{LB} \gets -\infty$，$Q \gets \{q_0\}$，$\text{GLB} \gets -\infty$，$\text{GUB} \gets \infty$;
+        \While{$Q \neq \emptyset$ 且 $\text{GLB} < \text{GUB}$}
+            \State 选取 $q \in Q$，更新 $Q \gets Q \setminus \{q\}$，更新 $\text{GLB} \gets \min\{q.\text{LB} \mid q \in Q\}$;
+            \If{$q$ 的线性松弛问题可行}
+                \State 记线性松弛问题的解为 $(x^k, \eta$，最优值为 $c$;
+                \If{$f(x^k) > \eta^k$}
+                    \State \textbf{(可选) 增加外逼近割：$f(x^k) + \nabla f(x^k) (x - x^k) \leq \eta^k$}
+                \EndIf
+                \If{$c < \text{GUB}$}
+                    \If{$x$ 是原问题可行解}
+                        \State 令 $x^* \gets x^k$，$\text{GUB} \gets c$;
+                        \If{$f(x^k) > \eta^k$}
+                            \State \textbf{增加外逼近割：$f(x^k) + \nabla f(x^k) (x - x^k) \leq \eta^k$}
+                        \EndIf
+                    \Else
+                        \State 将 $q$ 分成 $n$ 个子问题 $q_1, \ldots, q_n$，更新 $Q \gets Q \cup \{q_1, \ldots, q_n\}$;
+                    \EndIf
+                \EndIf
+            \EndIf
+        \EndWhile
+        \If{$\text{GUB} < \infty$}
+            \State \textbf{return} 最优解 $x^*$ 和最优值 $\text{GUB} = \eta^*$;
+        \Else
+            \State \textbf{return} 问题不可行;
+        \EndIf
+        \EndProcedure
+    \end{algorithmic}
+\end{algorithm}
+
+\section{数值实验}
+具目前我能找到的公开数据集而言，针对WTA（武器-目标分配）问题的大规模数据集相对较少。目前公开的主要数据集是Sonuc和Bayir（2017年）提供的，可在\href{http://web.karabuk.edu.tr/emrullahsonuc/wta}{http://web.karabuk.edu.tr/emrullahsonuc/wta}上获取。以往的研究通常根据问题规模的不同采用不同的数据处理方式：对于小规模问题，数据通常直接在论文中给出；而对于大规模问题，则通常采用随机生成的数据集，并说明数据生成的方法和参数。
+
+在历史上，研究者们考虑了不同规模的WTA问题实例，从最小的4个武器和4个目标到最大的200个武器和400个目标不等。例如，早期的研究如Manne（1958年）和Wang等人（2008年）分别考虑了最多4个武器和4个目标以及最多7个武器和10个目标的情景。中等规模的情景包括Lee等人（2002年）和Lee等人（2003年）分别研究的最多120个武器和80个目标以及120个武器和120个目标的情景。大规模的情景则包括Ahuja等人（2007年）研究的最多200个武器和400个目标的情景，以及Gelenbe等人（2010年）和Sonuc和Bayir（2017年）研究的最多200个武器和200个目标的情景。文献中考虑的最大武器-目标比（W-T比）为4。
+
+在近年的研究中，Lu(2021)扩展了这一研究范围，考察了达到400个武器和400个目标的规模，进一步推动了WTA问题在大规模情境下的研究。此外，Alexandre Colaers Andersen等人（2022年）也对WTA问题进行了深入研究，他们考虑了武器-目标比为1.5的情景，其中最大规模达到了700个武器和700个目标，这一规模远超过之前的研究，为WTA问题的大规模数据集研究提供了新的参考。
+
+在本论文中的第二章与第三章中，我们考虑以下数据集：我们首先采用了Sonuc和Bayir（2017年）公开的数据集，并将其用于与我们的算法进行比较。此外，我们还随机生成了多种不同的场景，包括不同的武器目标比例和武器规模，这些情景覆盖了Ahuja等人（2007年）、Gelenbe等人（2010年）和Sonuc和Bayir（2017年）Lu(2021)和Alexandre Colaers Andersen等人（2022年）考虑的问题的规模。我们的最大问题规模达到了1200个武器和1200个目标，最大W-T比达到了4，同时我们假设$p_H = 0.9$ 为杀伤概率最大值， $p_L = 0.6$ 为杀伤概率最小值。所有链的杀伤概率为在 $p_L = 0.6$ 到 $p_H = 0.9$ 之间均匀分布的随机数。
+$v_H = 100$ 为目标威胁值的最大值，$v_L = 25$ 为目标威胁值的最小值。所有目标的威胁值设定为在 $v_L = 25$ 到 $v_H = 100$ 之间均匀分布的随机整数。
+
+在第二章中，我们主要考虑Sonuc和Bayir（2017年）公开的数据集，并且将计算结果作为后续测试的基准，并通过计算结果体现WTA问题求解的难点。在这个数据集中，武器与目标的数量一致，取自{5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 200}。
+
+我们对比了Lu、Ahuja的方法，这是我们得到的数值结果:
